@@ -302,12 +302,17 @@ def validate_pipeline_setup(config: Dict[str, Any]) -> bool:
     
     try:
         # Check if required directories exist or can be created
+        # Note: Directories are now created by config_manager.py with absolute paths
         repository_base = config.get('repository_base_path', 'repository')
-        required_dirs = [repository_base, 'data', 'logs']
-        for dir_name in required_dirs:
-            dir_path = Path(dir_name)
-            dir_path.mkdir(exist_ok=True)
-            logger.debug(f"Directory ready: {dir_name}")
+        logger.debug(f"Repository base path: {repository_base}")
+        
+        # Validate that the repository directory exists (should be created by config_manager)
+        repository_path = Path(repository_base)
+        if not repository_path.exists():
+            repository_path.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Created repository directory: {repository_base}")
+        else:
+            logger.debug(f"Repository directory exists: {repository_base}")
         
         # Validate executables
         from ..utils.config_manager import validate_executables
