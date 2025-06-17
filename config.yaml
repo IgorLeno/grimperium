@@ -1,0 +1,17 @@
+executables:
+  crest: 'crest'
+  mopac: 'mopac'
+  obabel: 'obabel'
+
+mopac_keywords: 'PM7 EF PRECISE GNORM=0.01 NOINTER GRAPHF VECTORS MMOK CYCLES=20000'
+crest_keywords: '--gfn2'
+repository_base_path: 'repository'
+
+logging:
+  log_file: 'logs/grim_details.log'
+  console_level: 'INFO'
+  file_level: 'DEBUG'
+
+database:
+  cbs_db_path: 'data/thermo_cbs.csv'
+  pm7_db_path: 'data/thermo_pm7.csv'
