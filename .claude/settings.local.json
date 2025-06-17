@@ -3,7 +3,10 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(rm:*)",
+      "Bash(python:*)",
+      "Bash(tree:*)"
     ],
     "deny": []
   }

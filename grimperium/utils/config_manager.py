@@ -12,24 +12,28 @@ from typing import Any, Dict, Optional
 import yaml
 
 
-def load_config(config_path: str) -> Optional[Dict[str, Any]]:
+def load_config(config_path: str, project_root: Path) -> Optional[Dict[str, Any]]:
     """
-    Load configuration from a YAML file.
+    Load configuration from a YAML file and resolve relative paths to absolute paths.
     
     This function loads the Grimperium configuration from a YAML file,
-    validates required sections, and returns a dictionary with all
-    configuration settings.
+    validates required sections, and converts relative paths to absolute paths
+    based on the project root directory.
     
     Args:
         config_path: Path to the configuration YAML file
+        project_root: Path object representing the project root directory
         
     Returns:
-        Dictionary containing configuration settings, None if loading fails
+        Dictionary containing configuration settings with resolved absolute paths, 
+        None if loading fails
         
     Example:
-        >>> config = load_config("config.yaml")
-        >>> print(config['executables']['crest'])
-        'crest'
+        >>> from pathlib import Path
+        >>> project_root = Path("/home/user/grimperium")
+        >>> config = load_config("config.yaml", project_root)
+        >>> print(config['database']['pm7_db_path'])
+        '/home/user/grimperium/data/thermo_pm7.csv'
     """
     logger = logging.getLogger(__name__)
     
@@ -87,8 +91,61 @@ def load_config(config_path: str) -> Optional[Dict[str, Any]]:
         # Set default values for optional settings
         config.setdefault('mopac_keywords', 'PM7 PRECISE XYZ')
         config.setdefault('crest_keywords', '--gfn2')
+        config.setdefault('repository_base_path', 'repository')
         
-        logger.info("Configuration loaded and validated successfully")
+        # Resolve relative paths to absolute paths based on project root
+        logger.debug(f"Resolving paths relative to project root: {project_root}")
+        
+        # Resolve database paths
+        if 'database' in config:
+            for key in ['cbs_db_path', 'pm7_db_path']:
+                if key in config['database']:
+                    relative_path = config['database'][key]
+                    absolute_path = project_root / relative_path
+                    config['database'][key] = str(absolute_path)
+                    logger.debug(f"Resolved {key}: {relative_path} -> {absolute_path}")
+        
+        # Resolve logging paths
+        if 'logging' in config and 'log_file' in config['logging']:
+            relative_path = config['logging']['log_file']
+            absolute_path = project_root / relative_path
+            config['logging']['log_file'] = str(absolute_path)
+            logger.debug(f"Resolved log_file: {relative_path} -> {absolute_path}")
+        
+        # Resolve repository base path
+        if 'repository_base_path' in config:
+            relative_path = config['repository_base_path']
+            absolute_path = project_root / relative_path
+            config['repository_base_path'] = str(absolute_path)
+            logger.debug(f"Resolved repository_base_path: {relative_path} -> {absolute_path}")
+        
+        # Ensure required directories exist
+        logger.debug("Creating required directories if they don't exist")
+        required_dirs = []
+        
+        if 'database' in config:
+            for key in ['cbs_db_path', 'pm7_db_path']:
+                if key in config['database']:
+                    db_dir = Path(config['database'][key]).parent
+                    required_dirs.append(db_dir)
+        
+        if 'logging' in config and 'log_file' in config['logging']:
+            log_dir = Path(config['logging']['log_file']).parent
+            required_dirs.append(log_dir)
+        
+        if 'repository_base_path' in config:
+            repository_dir = Path(config['repository_base_path'])
+            required_dirs.append(repository_dir)
+        
+        # Create directories
+        for dir_path in required_dirs:
+            try:
+                dir_path.mkdir(parents=True, exist_ok=True)
+                logger.debug(f"Ensured directory exists: {dir_path}")
+            except Exception as e:
+                logger.warning(f"Could not create directory {dir_path}: {e}")
+        
+        logger.info("Configuration loaded, validated, and paths resolved successfully")
         return config
         
     except yaml.YAMLError as e:

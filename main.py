@@ -19,6 +19,9 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeEl
 from rich.panel import Panel
 from rich.table import Table
 
+# Define project root for absolute path resolution
+PROJECT_ROOT = Path(__file__).resolve().parent
+
 from grimperium.utils.config_manager import load_config
 from grimperium.services.pipeline_orchestrator import (
     process_single_molecule,
@@ -110,7 +113,7 @@ def run_single(
     
     # Load configuration
     rich_print(f"[yellow]📋 Loading configuration from: {config_file}[/yellow]")
-    config = load_config(config_file)
+    config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         raise typer.Exit(1)
@@ -199,7 +202,7 @@ def run_batch(
     
     # Load configuration
     rich_print(f"[yellow]📋 Loading configuration from: {config_file}[/yellow]")
-    config = load_config(config_file)
+    config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         raise typer.Exit(1)
@@ -299,7 +302,7 @@ def report(
     ))
     
     # Load configuration
-    config = load_config(config_file)
+    config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         raise typer.Exit(1)
@@ -475,7 +478,7 @@ def info(
     ))
     
     # Load and display configuration
-    config = load_config(config_file)
+    config = load_config(config_file, PROJECT_ROOT)
     if config:
         rich_print("[green]✅ Configuration loaded successfully[/green]")
         
