@@ -1,0 +1,2 @@
+smiles,identifier,sdf_path,xyz_path,crest_best_xyz_path,pm7_energy,charge,multiplicity
+OCC,ethanol,/home/igor_fern/projects/grimperium/repository/ethanol/ethanol.sdf,/home/igor_fern/projects/grimperium/repository/ethanol/ethanol.xyz,/home/igor_fern/projects/grimperium/repository/ethanol/crest_output/crest_best.xyz,-57.85803,0,1
