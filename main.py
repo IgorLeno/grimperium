@@ -8,6 +8,10 @@ conformational search, quantum chemical calculations, and thermodynamic analysis
 """
 
 import logging
+import os
+import platform
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
@@ -460,6 +464,85 @@ def report(
         rich_print(f"\n[yellow]🚀 Ready to start calculations! {report_data['total_cbs']:,} molecules await processing.[/yellow]")
 
 
+def get_executable_version(executable_name: str) -> str:
+    """Get version information for an executable."""
+    try:
+        if executable_name == "crest":
+            result = subprocess.run([executable_name, "--version"], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                # Extract version from output (format may vary)
+                lines = result.stdout.strip().split('\n')
+                for line in lines:
+                    if 'version' in line.lower() or 'crest' in line.lower():
+                        return line.strip()
+                return "Version info available"
+            return "Version unavailable"
+        
+        elif executable_name == "obabel":
+            result = subprocess.run([executable_name, "--version"], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                for line in lines:
+                    if 'open babel' in line.lower() or 'version' in line.lower():
+                        return line.strip()
+                return "Version info available"
+            return "Version unavailable"
+        
+        elif executable_name == "mopac":
+            result = subprocess.run([executable_name], 
+                                  capture_output=True, text=True, timeout=10)
+            # MOPAC might return version info in stderr or stdout
+            output = result.stdout + result.stderr
+            lines = output.strip().split('\n')
+            for line in lines:
+                if 'mopac' in line.lower() or 'version' in line.lower():
+                    return line.strip()
+            return "MOPAC detected"
+        
+        else:
+            return "Version check not implemented"
+            
+    except subprocess.TimeoutExpired:
+        return "Timeout getting version"
+    except FileNotFoundError:
+        return "Executable not found"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
+def get_library_version(library_name: str) -> str:
+    """Get version of a Python library."""
+    try:
+        if library_name == "pandas":
+            import pandas
+            return pandas.__version__
+        elif library_name == "typer":
+            import typer
+            return typer.__version__
+        elif library_name == "rich":
+            import rich
+            return rich.__version__
+        elif library_name == "pydantic":
+            import pydantic
+            return pydantic.__version__
+        elif library_name == "pyyaml":
+            import yaml
+            return yaml.__version__
+        elif library_name == "requests":
+            import requests
+            return requests.__version__
+        else:
+            return "Unknown library"
+    except ImportError:
+        return "Not installed"
+    except AttributeError:
+        return "Version unavailable"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+
 @app.command()
 def info(
     config_file: str = typer.Option(
@@ -470,32 +553,101 @@ def info(
     )
 ) -> None:
     """
-    Display system information and configuration status.
+    Display comprehensive system information and diagnostic report.
     """
     console.print(Panel.fit(
-        "[bold blue]🧪 Grimperium v2 - System Information[/bold blue]",
+        "[bold blue]🧪 Grimperium v2 - Diagnóstico do Sistema[/bold blue]",
         border_style="blue"
     ))
     
-    # Load and display configuration
+    # Create diagnostic table
+    table = Table(title="Sistema e Dependências")
+    table.add_column("Componente", style="bold", width=25)
+    table.add_column("Status", justify="center", width=8)
+    table.add_column("Detalhes / Versão", width=50)
+    
+    # System Information
+    os_name = platform.system()
+    os_version = platform.release()
+    architecture = platform.machine()
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    
+    table.add_row("Sistema Operacional", "✅", f"{os_name} {os_version} ({architecture})")
+    table.add_row("Python", "✅", python_version)
+    
+    # Conda Environment
+    conda_env = os.environ.get('CONDA_DEFAULT_ENV', 'N/A')
+    if conda_env != 'N/A':
+        table.add_row("Ambiente Conda", "✅", conda_env)
+    else:
+        table.add_row("Ambiente Conda", "⚠️", "Não detectado")
+    
+    # Add separator
+    table.add_row("", "", "")
+    
+    # External Executables
+    executables = ["crest", "mopac", "obabel"]
+    
+    for exe in executables:
+        exe_path = shutil.which(exe)
+        if exe_path:
+            version_info = get_executable_version(exe)
+            table.add_row(f"Executável: {exe}", "✅", f"{exe_path}")
+            table.add_row("", "", f"Versão: {version_info}")
+        else:
+            table.add_row(f"Executável: {exe}", "❌", "Não encontrado no PATH")
+    
+    # Add separator
+    table.add_row("", "", "")
+    
+    # Python Libraries
+    libraries = ["pandas", "typer", "rich", "pydantic", "pyyaml", "requests"]
+    
+    for lib in libraries:
+        version = get_library_version(lib)
+        if version != "Not installed":
+            table.add_row(f"Biblioteca: {lib}", "✅", version)
+        else:
+            table.add_row(f"Biblioteca: {lib}", "❌", "Não instalada")
+    
+    console.print(table)
+    
+    # Configuration Status
+    console.print()
     config = load_config(config_file, PROJECT_ROOT)
     if config:
-        rich_print("[green]✅ Configuration loaded successfully[/green]")
+        console.print("[green]✅ Configuração carregada com sucesso[/green]")
         
         # Validate executables
         from grimperium.utils.config_manager import validate_executables
         if validate_executables(config):
-            rich_print("[green]✅ All required executables are available[/green]")
+            console.print("[green]✅ Todos os executáveis necessários estão disponíveis[/green]")
         else:
-            rich_print("[red]❌ Some required executables are missing[/red]")
+            console.print("[red]❌ Alguns executáveis necessários estão faltando[/red]")
         
         # Validate pipeline setup
         if validate_pipeline_setup(config):
-            rich_print("[green]✅ Pipeline setup is valid[/green]")
+            console.print("[green]✅ Configuração do pipeline é válida[/green]")
         else:
-            rich_print("[red]❌ Pipeline setup validation failed[/red]")
+            console.print("[red]❌ Validação da configuração do pipeline falhou[/red]")
+            
+        # Overall system status
+        console.print()
+        missing_executables = [exe for exe in executables if not shutil.which(exe)]
+        missing_libraries = [lib for lib in libraries if get_library_version(lib) == "Not installed"]
+        
+        if not missing_executables and not missing_libraries:
+            console.print("[green]🎉 Sistema configurado corretamente e pronto para execução![/green]")
+        else:
+            console.print("[yellow]⚠️  Sistema parcialmente configurado. Algumas dependências estão faltando.[/yellow]")
+            
+            if missing_executables:
+                console.print(f"[red]   • Executáveis faltando: {', '.join(missing_executables)}[/red]")
+            if missing_libraries:
+                console.print(f"[red]   • Bibliotecas faltando: {', '.join(missing_libraries)}[/red]")
+                
     else:
-        rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
+        console.print(f"[red]❌ Falha ao carregar configuração de: {config_file}[/red]")
 
 
 if __name__ == "__main__":
