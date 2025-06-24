@@ -7,7 +7,8 @@
       "Bash(rm:*)",
       "Bash(python:*)",
       "Bash(tree:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(pip install:*)"
     ],
     "deny": []
   }

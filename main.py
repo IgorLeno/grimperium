@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+import questionary
 from rich import print as rich_print
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
@@ -58,55 +59,22 @@ def setup_logging(verbose: bool = False):
     )
 
 
-@app.command()
-def run_single(
-    config_file: str = typer.Option(
-        "config.yaml",
-        "--config",
-        "-c",
-        help="Path to configuration file"
-    ),
-    name: Optional[str] = typer.Option(
-        None,
-        "--name",
-        "-n", 
-        help="Molecule name to search in PubChem"
-    ),
-    smiles: Optional[str] = typer.Option(
-        None,
-        "--smiles",
-        "-s",
-        help="SMILES string of the molecule"
-    ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Enable verbose output"
-    )
-) -> None:
+# BUSINESS LOGIC FUNCTIONS (DECOUPLED FROM UI)
+
+def _execute_single_molecule_logic(identifier: str, identifier_type: str, config_file: str, verbose: bool = False) -> bool:
     """
-    Process a single molecule through the computational chemistry pipeline.
+    Execute single molecule processing logic.
     
-    This command runs the complete Grimperium workflow for a single molecule,
-    from structure retrieval through energy calculation and database storage.
-    
-    You must specify either --name or --smiles (but not both).
+    Args:
+        identifier: Molecule identifier (name or SMILES)
+        identifier_type: Type of identifier ("name" or "SMILES")
+        config_file: Path to configuration file
+        verbose: Enable verbose output
+        
+    Returns:
+        bool: True if processing was successful, False otherwise
     """
     setup_logging(verbose)
-    
-    # Validate input arguments
-    if not name and not smiles:
-        rich_print("[red]❌ Error: You must specify either --name or --smiles[/red]")
-        raise typer.Exit(1)
-        
-    if name and smiles:
-        rich_print("[red]❌ Error: You cannot specify both --name and --smiles[/red]")
-        raise typer.Exit(1)
-    
-    # Use the provided identifier
-    identifier = name if name else smiles
-    identifier_type = "name" if name else "SMILES"
     
     # Display welcome message
     console.print(Panel.fit(
@@ -120,13 +88,13 @@ def run_single(
     config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
-        raise typer.Exit(1)
+        return False
     
     # Validate pipeline setup
     rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
     if not validate_pipeline_setup(config):
         rich_print("[red]❌ Pipeline setup validation failed[/red]")
-        raise typer.Exit(1)
+        return False
     
     # Process the molecule
     rich_print(f"[green]🚀 Processing molecule ({identifier_type}): {identifier}[/green]")
@@ -143,37 +111,24 @@ def run_single(
     if success:
         rich_print(f"[green]✅ Successfully processed: {identifier}[/green]")
         rich_print("[green]🎉 Results saved to database![/green]")
+        return True
     else:
         rich_print(f"[red]❌ Failed to process: {identifier}[/red]")
         rich_print("[red]💥 Check the logs for detailed error information[/red]")
-        raise typer.Exit(1)
+        return False
 
 
-@app.command()
-def run_batch(
-    file: str = typer.Argument(
-        ...,
-        help="Path to text file containing molecule identifiers (one per line)"
-    ),
-    config_file: str = typer.Option(
-        "config.yaml",
-        "--config",
-        "-c",
-        help="Path to configuration file"
-    ),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Enable verbose output"
-    )
-) -> None:
+def _execute_batch_logic(file_path: str, config_file: str, verbose: bool = False) -> dict:
     """
-    Process multiple molecules from a file through the computational chemistry pipeline.
+    Execute batch processing logic.
     
-    This command reads molecule identifiers from a text file (one per line) and
-    processes each through the complete Grimperium workflow. Progress is displayed
-    with a progress bar.
+    Args:
+        file_path: Path to file containing molecule identifiers
+        config_file: Path to configuration file
+        verbose: Enable verbose output
+        
+    Returns:
+        dict: Processing results with counts
     """
     setup_logging(verbose)
     
@@ -185,10 +140,10 @@ def run_batch(
     ))
     
     # Validate input file
-    input_file = Path(file)
+    input_file = Path(file_path)
     if not input_file.exists():
-        rich_print(f"[red]❌ Input file not found: {file}[/red]")
-        raise typer.Exit(1)
+        rich_print(f"[red]❌ Input file not found: {file_path}[/red]")
+        return {"error": f"Input file not found: {file_path}"}
     
     # Load molecule identifiers
     try:
@@ -196,11 +151,11 @@ def run_batch(
             identifiers = [line.strip() for line in f if line.strip()]
     except Exception as e:
         rich_print(f"[red]❌ Error reading input file: {e}[/red]")
-        raise typer.Exit(1)
+        return {"error": f"Error reading input file: {e}"}
     
     if not identifiers:
-        rich_print(f"[red]❌ No molecule identifiers found in: {file}[/red]")
-        raise typer.Exit(1)
+        rich_print(f"[red]❌ No molecule identifiers found in: {file_path}[/red]")
+        return {"error": f"No molecule identifiers found in: {file_path}"}
     
     rich_print(f"[green]📄 Loaded {len(identifiers)} molecule identifiers[/green]")
     
@@ -209,13 +164,13 @@ def run_batch(
     config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
-        raise typer.Exit(1)
+        return {"error": f"Failed to load configuration from: {config_file}"}
     
     # Validate pipeline setup
     rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
     if not validate_pipeline_setup(config):
         rich_print("[red]❌ Pipeline setup validation failed[/red]")
-        raise typer.Exit(1)
+        return {"error": "Pipeline setup validation failed"}
     
     # Process molecules with progress bar
     rich_print("[green]🚀 Starting batch processing...[/green]")
@@ -270,35 +225,134 @@ def run_batch(
     
     if failed_count > 0:
         rich_print(f"[yellow]⚠️  {failed_count} molecules failed processing. Check logs for details.[/yellow]")
-
-
-@app.command()
-def report(
-    config_file: str = typer.Option(
-        "config.yaml",
-        "--config",
-        "-c",
-        help="Path to configuration file"
-    ),
-    detailed: bool = typer.Option(
-        False,
-        "--detailed",
-        "-d",
-        help="Show detailed database analysis"
-    ),
-    missing: int = typer.Option(
-        0,
-        "--missing",
-        "-m",
-        help="Show N missing molecules that need calculation"
-    )
-) -> None:
-    """
-    Generate comprehensive progress report comparing CBS reference and PM7 calculated databases.
     
-    This command analyzes the computational chemistry calculation progress by comparing
-    the CBS reference database with the PM7 calculated results, providing insights
-    into completion status and remaining work.
+    return {
+        "total": total,
+        "successful": successful_count,
+        "failed": failed_count,
+        "success_percentage": success_pct
+    }
+
+
+def _execute_info_logic(config_file: str) -> bool:
+    """
+    Execute system info display logic.
+    
+    Args:
+        config_file: Path to configuration file
+        
+    Returns:
+        bool: True if info was displayed successfully
+    """
+    console.print(Panel.fit(
+        "[bold blue]🧪 Grimperium v2 - Diagnóstico do Sistema[/bold blue]",
+        border_style="blue"
+    ))
+    
+    # Create diagnostic table
+    table = Table(title="Sistema e Dependências")
+    table.add_column("Componente", style="bold", width=25)
+    table.add_column("Status", justify="center", width=8)
+    table.add_column("Detalhes / Versão", width=50)
+    
+    # System Information
+    os_name = platform.system()
+    os_version = platform.release()
+    architecture = platform.machine()
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    
+    table.add_row("Sistema Operacional", "✅", f"{os_name} {os_version} ({architecture})")
+    table.add_row("Python", "✅", python_version)
+    
+    # Conda Environment
+    conda_env = os.environ.get('CONDA_DEFAULT_ENV', 'N/A')
+    if conda_env != 'N/A':
+        table.add_row("Ambiente Conda", "✅", conda_env)
+    else:
+        table.add_row("Ambiente Conda", "⚠️", "Não detectado")
+    
+    # Add separator
+    table.add_row("", "", "")
+    
+    # External Executables
+    executables = ["crest", "mopac", "obabel"]
+    
+    for exe in executables:
+        exe_path = shutil.which(exe)
+        if exe_path:
+            version_info = get_executable_version(exe)
+            table.add_row(f"Executável: {exe}", "✅", f"{exe_path}")
+            table.add_row("", "", f"Versão: {version_info}")
+        else:
+            table.add_row(f"Executável: {exe}", "❌", "Não encontrado no PATH")
+    
+    # Add separator
+    table.add_row("", "", "")
+    
+    # Python Libraries
+    libraries = ["pandas", "typer", "rich", "pydantic", "pyyaml", "requests"]
+    
+    for lib in libraries:
+        version = get_library_version(lib)
+        if version != "Not installed":
+            table.add_row(f"Biblioteca: {lib}", "✅", version)
+        else:
+            table.add_row(f"Biblioteca: {lib}", "❌", "Não instalada")
+    
+    console.print(table)
+    
+    # Configuration Status
+    console.print()
+    config = load_config(config_file, PROJECT_ROOT)
+    if config:
+        console.print("[green]✅ Configuração carregada com sucesso[/green]")
+        
+        # Validate executables
+        from grimperium.utils.config_manager import validate_executables
+        if validate_executables(config):
+            console.print("[green]✅ Todos os executáveis necessários estão disponíveis[/green]")
+        else:
+            console.print("[red]❌ Alguns executáveis necessários estão faltando[/red]")
+        
+        # Validate pipeline setup
+        if validate_pipeline_setup(config):
+            console.print("[green]✅ Configuração do pipeline é válida[/green]")
+        else:
+            console.print("[red]❌ Validação da configuração do pipeline falhou[/red]")
+            
+        # Overall system status
+        console.print()
+        missing_executables = [exe for exe in executables if not shutil.which(exe)]
+        missing_libraries = [lib for lib in libraries if get_library_version(lib) == "Not installed"]
+        
+        if not missing_executables and not missing_libraries:
+            console.print("[green]🎉 Sistema configurado corretamente e pronto para execução![/green]")
+        else:
+            console.print("[yellow]⚠️  Sistema parcialmente configurado. Algumas dependências estão faltando.[/yellow]")
+            
+            if missing_executables:
+                console.print(f"[red]   • Executáveis faltando: {', '.join(missing_executables)}[/red]")
+            if missing_libraries:
+                console.print(f"[red]   • Bibliotecas faltando: {', '.join(missing_libraries)}[/red]")
+        
+        return True
+                
+    else:
+        console.print(f"[red]❌ Falha ao carregar configuração de: {config_file}[/red]")
+        return False
+
+
+def _execute_report_logic(config_file: str, detailed: bool = False, missing: int = 0) -> bool:
+    """
+    Execute progress report generation logic.
+    
+    Args:
+        config_file: Path to configuration file
+        detailed: Show detailed analysis
+        missing: Number of missing molecules to show
+        
+    Returns:
+        bool: True if report was generated successfully
     """
     console.print(Panel.fit(
         "[bold blue]🧪 Grimperium v2 - Progress Report[/bold blue]",
@@ -309,7 +363,7 @@ def report(
     config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
-        raise typer.Exit(1)
+        return False
     
     # Get database paths from configuration
     cbs_db_path = config['database']['cbs_db_path']
@@ -322,7 +376,7 @@ def report(
     # Check for errors
     if 'error' in report_data:
         rich_print(f"[red]❌ Error generating report: {report_data['error']}[/red]")
-        raise typer.Exit(1)
+        return False
     
     # Create main progress panel
     progress_content = []
@@ -462,6 +516,131 @@ def report(
         rich_print(f"\n[blue]📈 Keep up the great work! {report_data['missing_count']:,} molecules remaining.[/blue]")
     else:
         rich_print(f"\n[yellow]🚀 Ready to start calculations! {report_data['total_cbs']:,} molecules await processing.[/yellow]")
+    
+    return True
+
+
+@app.command()
+def run_single(
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="Path to configuration file"
+    ),
+    name: Optional[str] = typer.Option(
+        None,
+        "--name",
+        "-n", 
+        help="Molecule name to search in PubChem"
+    ),
+    smiles: Optional[str] = typer.Option(
+        None,
+        "--smiles",
+        "-s",
+        help="SMILES string of the molecule"
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output"
+    )
+) -> None:
+    """
+    Process a single molecule through the computational chemistry pipeline.
+    
+    This command runs the complete Grimperium workflow for a single molecule,
+    from structure retrieval through energy calculation and database storage.
+    
+    You must specify either --name or --smiles (but not both).
+    """
+    # Validate input arguments
+    if not name and not smiles:
+        rich_print("[red]❌ Error: You must specify either --name or --smiles[/red]")
+        raise typer.Exit(1)
+        
+    if name and smiles:
+        rich_print("[red]❌ Error: You cannot specify both --name and --smiles[/red]")
+        raise typer.Exit(1)
+    
+    # Use the provided identifier
+    identifier = name if name else smiles
+    identifier_type = "name" if name else "SMILES"
+    
+    # Call the business logic function
+    success = _execute_single_molecule_logic(identifier, identifier_type, config_file, verbose)
+    
+    if not success:
+        raise typer.Exit(1)
+
+
+@app.command()
+def run_batch(
+    file: str = typer.Argument(
+        ...,
+        help="Path to text file containing molecule identifiers (one per line)"
+    ),
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="Path to configuration file"
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable verbose output"
+    )
+) -> None:
+    """
+    Process multiple molecules from a file through the computational chemistry pipeline.
+    
+    This command reads molecule identifiers from a text file (one per line) and
+    processes each through the complete Grimperium workflow. Progress is displayed
+    with a progress bar.
+    """
+    # Call the business logic function
+    result = _execute_batch_logic(file, config_file, verbose)
+    
+    if "error" in result:
+        raise typer.Exit(1)
+
+
+@app.command()
+def report(
+    config_file: str = typer.Option(
+        "config.yaml",
+        "--config",
+        "-c",
+        help="Path to configuration file"
+    ),
+    detailed: bool = typer.Option(
+        False,
+        "--detailed",
+        "-d",
+        help="Show detailed database analysis"
+    ),
+    missing: int = typer.Option(
+        0,
+        "--missing",
+        "-m",
+        help="Show N missing molecules that need calculation"
+    )
+) -> None:
+    """
+    Generate comprehensive progress report comparing CBS reference and PM7 calculated databases.
+    
+    This command analyzes the computational chemistry calculation progress by comparing
+    the CBS reference database with the PM7 calculated results, providing insights
+    into completion status and remaining work.
+    """
+    # Call the business logic function
+    success = _execute_report_logic(config_file, detailed, missing)
+    
+    if not success:
+        raise typer.Exit(1)
 
 
 def get_executable_version(executable_name: str) -> str:
@@ -555,99 +734,227 @@ def info(
     """
     Display comprehensive system information and diagnostic report.
     """
+    # Call the business logic function
+    success = _execute_info_logic(config_file)
+    
+    if not success:
+        raise typer.Exit(1)
+
+
+def interactive_menu():
+    """
+    Interactive menu for Grimperium using questionary.
+    """
     console.print(Panel.fit(
-        "[bold blue]🧪 Grimperium v2 - Diagnóstico do Sistema[/bold blue]",
+        "[bold blue]🧪 Grimperium v2 - Menu Interativo[/bold blue]\n"
+        "[cyan]Computational Chemistry Workflow Automation[/cyan]",
         border_style="blue"
     ))
     
-    # Create diagnostic table
-    table = Table(title="Sistema e Dependências")
-    table.add_column("Componente", style="bold", width=25)
-    table.add_column("Status", justify="center", width=8)
-    table.add_column("Detalhes / Versão", width=50)
-    
-    # System Information
-    os_name = platform.system()
-    os_version = platform.release()
-    architecture = platform.machine()
-    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-    
-    table.add_row("Sistema Operacional", "✅", f"{os_name} {os_version} ({architecture})")
-    table.add_row("Python", "✅", python_version)
-    
-    # Conda Environment
-    conda_env = os.environ.get('CONDA_DEFAULT_ENV', 'N/A')
-    if conda_env != 'N/A':
-        table.add_row("Ambiente Conda", "✅", conda_env)
-    else:
-        table.add_row("Ambiente Conda", "⚠️", "Não detectado")
-    
-    # Add separator
-    table.add_row("", "", "")
-    
-    # External Executables
-    executables = ["crest", "mopac", "obabel"]
-    
-    for exe in executables:
-        exe_path = shutil.which(exe)
-        if exe_path:
-            version_info = get_executable_version(exe)
-            table.add_row(f"Executável: {exe}", "✅", f"{exe_path}")
-            table.add_row("", "", f"Versão: {version_info}")
-        else:
-            table.add_row(f"Executável: {exe}", "❌", "Não encontrado no PATH")
-    
-    # Add separator
-    table.add_row("", "", "")
-    
-    # Python Libraries
-    libraries = ["pandas", "typer", "rich", "pydantic", "pyyaml", "requests"]
-    
-    for lib in libraries:
-        version = get_library_version(lib)
-        if version != "Not installed":
-            table.add_row(f"Biblioteca: {lib}", "✅", version)
-        else:
-            table.add_row(f"Biblioteca: {lib}", "❌", "Não instalada")
-    
-    console.print(table)
-    
-    # Configuration Status
-    console.print()
-    config = load_config(config_file, PROJECT_ROOT)
-    if config:
-        console.print("[green]✅ Configuração carregada com sucesso[/green]")
-        
-        # Validate executables
-        from grimperium.utils.config_manager import validate_executables
-        if validate_executables(config):
-            console.print("[green]✅ Todos os executáveis necessários estão disponíveis[/green]")
-        else:
-            console.print("[red]❌ Alguns executáveis necessários estão faltando[/red]")
-        
-        # Validate pipeline setup
-        if validate_pipeline_setup(config):
-            console.print("[green]✅ Configuração do pipeline é válida[/green]")
-        else:
-            console.print("[red]❌ Validação da configuração do pipeline falhou[/red]")
+    while True:
+        try:
+            choice = questionary.select(
+                "O que você gostaria de fazer?",
+                choices=[
+                    "Processar uma única molécula",
+                    "Processar um lote de moléculas de um arquivo",
+                    "Verificar o status do sistema",
+                    "Gerar um relatório de progresso",
+                    "Sair"
+                ],
+                style=questionary.Style([
+                    ('question', 'bold'),
+                    ('answer', 'fg:#ff9d00 bold'),
+                    ('pointer', 'fg:#ff9d00 bold'),
+                    ('highlighted', 'fg:#ff9d00 bold'),
+                    ('selected', 'fg:#cc5454'),
+                    ('separator', 'fg:#cc5454'),
+                    ('instruction', ''),
+                    ('text', ''),
+                    ('disabled', 'fg:#858585 italic')
+                ])
+            ).ask()
             
-        # Overall system status
-        console.print()
-        missing_executables = [exe for exe in executables if not shutil.which(exe)]
-        missing_libraries = [lib for lib in libraries if get_library_version(lib) == "Not installed"]
-        
-        if not missing_executables and not missing_libraries:
-            console.print("[green]🎉 Sistema configurado corretamente e pronto para execução![/green]")
-        else:
-            console.print("[yellow]⚠️  Sistema parcialmente configurado. Algumas dependências estão faltando.[/yellow]")
-            
-            if missing_executables:
-                console.print(f"[red]   • Executáveis faltando: {', '.join(missing_executables)}[/red]")
-            if missing_libraries:
-                console.print(f"[red]   • Bibliotecas faltando: {', '.join(missing_libraries)}[/red]")
+            if choice == "Processar uma única molécula":
+                handle_single_molecule()
+            elif choice == "Processar um lote de moléculas de um arquivo":
+                handle_batch_molecules()
+            elif choice == "Verificar o status do sistema":
+                handle_system_info()
+            elif choice == "Gerar um relatório de progresso":
+                handle_progress_report()
+            elif choice == "Sair":
+                rich_print("[cyan]👋 Obrigado por usar o Grimperium![/cyan]")
+                break
+            else:
+                rich_print("[red]❌ Opção inválida[/red]")
                 
-    else:
-        console.print(f"[red]❌ Falha ao carregar configuração de: {config_file}[/red]")
+        except KeyboardInterrupt:
+            rich_print("\n[cyan]👋 Operação cancelada. Até logo![/cyan]")
+            break
+        except Exception as e:
+            rich_print(f"[red]❌ Erro inesperado: {e}[/red]")
+            break
+
+
+def handle_single_molecule():
+    """
+    Handle single molecule processing through interactive prompts.
+    """
+    console.print(Panel.fit(
+        "[bold green]🧪 Processar Uma Única Molécula[/bold green]",
+        border_style="green"
+    ))
+    
+    # Ask for input type
+    input_type = questionary.select(
+        "Qual o tipo de entrada?",
+        choices=["Nome Químico", "SMILES"]
+    ).ask()
+    
+    if input_type == "Nome Químico":
+        molecule_input = questionary.text(
+            "Por favor, digite o Nome Químico:",
+            validate=lambda text: len(text.strip()) > 0 or "O nome não pode estar vazio"
+        ).ask()
+        
+        if molecule_input:
+            try:
+                _execute_single_molecule_logic(
+                    identifier=molecule_input.strip(),
+                    identifier_type="name",
+                    config_file='config.yaml',
+                    verbose=False
+                )
+            except Exception as e:
+                rich_print(f"[red]❌ Erro no processamento: {e}[/red]")
+    
+    elif input_type == "SMILES":
+        molecule_input = questionary.text(
+            "Por favor, digite o SMILES:",
+            validate=lambda text: len(text.strip()) > 0 or "O SMILES não pode estar vazio"
+        ).ask()
+        
+        if molecule_input:
+            try:
+                _execute_single_molecule_logic(
+                    identifier=molecule_input.strip(),
+                    identifier_type="SMILES",
+                    config_file='config.yaml',
+                    verbose=False
+                )
+            except Exception as e:
+                rich_print(f"[red]❌ Erro no processamento: {e}[/red]")
+    
+    # Pause before returning to menu
+    questionary.press_any_key_to_continue("Pressione qualquer tecla para continuar...").ask()
+
+
+def handle_batch_molecules():
+    """
+    Handle batch molecule processing through interactive prompts.
+    """
+    console.print(Panel.fit(
+        "[bold green]📁 Processar Lote de Moléculas[/bold green]",
+        border_style="green"
+    ))
+    
+    # Ask for file path
+    file_path = questionary.path(
+        "Selecione o arquivo com as moléculas (um identificador por linha):",
+        validate=lambda path: Path(path).exists() or "Arquivo não encontrado"
+    ).ask()
+    
+    if file_path:
+        try:
+            result = _execute_batch_logic(
+                file_path=file_path,
+                config_file='config.yaml',
+                verbose=False
+            )
+            if "error" in result:
+                rich_print(f"[red]❌ Erro no processamento do lote: {result['error']}[/red]")
+        except Exception as e:
+            rich_print(f"[red]❌ Erro no processamento do lote: {e}[/red]")
+    
+    # Pause before returning to menu
+    questionary.press_any_key_to_continue("Pressione qualquer tecla para continuar...").ask()
+
+
+def handle_system_info():
+    """
+    Handle system information display.
+    """
+    try:
+        _execute_info_logic(config_file='config.yaml')
+    except Exception as e:
+        rich_print(f"[red]❌ Erro ao obter informações do sistema: {e}[/red]")
+    
+    # Pause before returning to menu
+    questionary.press_any_key_to_continue("Pressione qualquer tecla para continuar...").ask()
+
+
+def handle_progress_report():
+    """
+    Handle progress report generation.
+    """
+    console.print(Panel.fit(
+        "[bold green]📊 Relatório de Progresso[/bold green]",
+        border_style="green"
+    ))
+    
+    # Ask for report options
+    detailed = questionary.confirm(
+        "Deseja um relatório detalhado?",
+        default=False
+    ).ask()
+    
+    missing_count = 0
+    if questionary.confirm(
+        "Deseja ver moléculas que precisam ser calculadas?",
+        default=False
+    ).ask():
+        missing_count = questionary.text(
+            "Quantas moléculas mostrar?",
+            default="10",
+            validate=lambda text: text.isdigit() and int(text) > 0 or "Digite um número válido maior que 0"
+        ).ask()
+        missing_count = int(missing_count) if missing_count else 0
+    
+    try:
+        _execute_report_logic(
+            config_file='config.yaml',
+            detailed=detailed,
+            missing=missing_count
+        )
+    except Exception as e:
+        rich_print(f"[red]❌ Erro ao gerar relatório: {e}[/red]")
+    
+    # Pause before returning to menu
+    questionary.press_any_key_to_continue("Pressione qualquer tecla para continuar...").ask()
+
+
+@app.callback(invoke_without_command=True)
+def main_callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False,
+        "--version",
+        help="Show version information"
+    )
+):
+    """
+    Grimperium v2 - Computational Chemistry Workflow Automation Tool
+    
+    Run without arguments to start the interactive menu.
+    """
+    if version:
+        rich_print("[bold blue]Grimperium v2[/bold blue] - Computational Chemistry Workflow Automation Tool")
+        return
+    
+    # If no subcommand was invoked, start interactive menu
+    if ctx.invoked_subcommand is None:
+        interactive_menu()
 
 
 if __name__ == "__main__":
