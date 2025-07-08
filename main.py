@@ -568,6 +568,11 @@ def run_single(
     identifier = name if name else smiles
     identifier_type = "name" if name else "SMILES"
     
+    # Ensure identifier is not None (should not happen due to validation above)
+    if identifier is None:
+        rich_print("[red]❌ Error: No identifier provided[/red]")
+        raise typer.Exit(1)
+    
     # Call the business logic function
     success = _execute_single_molecule_logic(identifier, identifier_type, config_file, verbose)
     

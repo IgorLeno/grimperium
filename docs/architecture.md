@@ -9,6 +9,8 @@ Este documento descreve a arquitetura de software modular e baseada em serviços
 *   **Arquitetura de Serviços:** A lógica de negócios é encapsulada em serviços (ex: `CalculationService`, `DatabaseService`) que são independentes da interface do usuário.
 *   **Configuração Externalizada:** Parâmetros dinâmicos residem em um arquivo `config.yaml`, desacoplando a configuração do código.
 *   **Interface Clara:** A interação com o usuário é gerenciada por um módulo de CLI, que orquestra as chamadas aos serviços.
+*   **Tratamento de Erros Robusto:** Cada serviço implementa tratamento de erros específico e logging detalhado.
+*   **Thread Safety:** Operações críticas como escrita em banco de dados são thread-safe usando FileLocker.
 
 ## **2. Estrutura de Diretórios Proposta**
 
@@ -35,14 +37,26 @@ grimperium/
 
 ## **3. Descrição dos Módulos Principais**
 
-*   **main.py**: Ponto de entrada da aplicação. Responsável por inicializar a CLI (Typer), carregar a configuração e delegar comandos para os módulos de interface.
-*   **core/molecule.py**: Define a estrutura de dados central, a classe `Molecule`, que representa uma molécula e seus dados associados ao longo do pipeline.
-*   **services/pubchem_service.py**: Responsável por toda a comunicação com a API do PubChem para buscar e baixar estruturas moleculares.
-*   **services/conversion_service.py**: Responsável por encapsular as chamadas ao OpenBabel, realizando conversões de formato de arquivo (ex: SDF -> XYZ).
+### **3.1 Ponto de Entrada**
+*   **main.py**: Ponto de entrada da aplicação. Responsável por inicializar a CLI (Typer), carregar a configuração e delegar comandos para os módulos de interface. Inclui modo interativo com Questionary e comandos diretos.
+
+### **3.2 Modelos de Domínio**
+*   **core/molecule.py**: Define a estrutura de dados central, a classe `Molecule`, que representa uma molécula e seus dados associados ao longo do pipeline. Usa Pydantic para validação de dados.
+
+### **3.3 Serviços de Negócio**
+*   **services/pubchem_service.py**: Responsável por toda a comunicação com a API do PubChem para buscar e baixar estruturas moleculares. Inclui cache e tratamento de erros.
+*   **services/conversion_service.py**: Responsável por encapsular as chamadas ao OpenBabel, realizando conversões de formato de arquivo (ex: SDF → XYZ).
 *   **services/calculation_service.py**: Responsável por executar os programas de química computacional (CREST, MOPAC) via chamadas de subprocesso e fazer o parsing dos arquivos de saída para extrair resultados.
-*   **services/database_service.py**: Responsável por todas as operações de leitura e escrita nos arquivos CSV, utilizando Pandas. Garante a consistência e a prevenção de duplicatas.
+*   **services/database_service.py**: Responsável por todas as operações de leitura e escrita nos arquivos CSV, utilizando Pandas. Garante a consistência e a prevenção de duplicatas com FileLock.
 *   **services/analysis_service.py**: Responsável por ler os bancos de dados e gerar relatórios de progresso e outras análises.
-*   **services/pipeline_orchestrator.py**: (Pode ser um módulo ou uma classe) Orquestra as chamadas aos diferentes serviços para executar o pipeline completo para uma ou mais moléculas.
-*   **interfaces/cli.py**: Define os comandos, argumentos e opções da CLI usando Typer. Traduz as interações do usuário em chamadas para o `pipeline_orchestrator`.
-*   **utils/config_manager.py**: Utilitário para carregar e validar o `config.yaml`.
-*   **utils/logging_config.py**: Utilitário para configurar o sistema de logging.
+*   **services/pipeline_orchestrator.py**: Orquestra as chamadas aos diferentes serviços para executar o pipeline completo para uma ou mais moléculas.
+
+### **3.4 Utilitários**
+*   **utils/config_manager.py**: Utilitário para carregar e validar o `config.yaml`. Inclui validação de executáveis.
+*   **utils/base_service.py**: Classe base para serviços com funcionalidade comum.
+*   **utils/error_handler.py**: Tratamento centralizado de erros.
+*   **utils/file_utils.py**: Utilitários para manipulação de arquivos.
+*   **utils/subprocess_utils.py**: Utilitários para execução de subprocessos.
+
+### **3.5 Testes**
+*   **tests/test_pipeline_orchestrator.py**: Testes automatizados com mocks inteligentes para subprocess.
