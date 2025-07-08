@@ -11,13 +11,21 @@ import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from ..constants import (
+    FILENAME_SANITIZATION_PATTERN,
+    MULTIPLE_UNDERSCORES_PATTERN,
+    DEFAULT_CHARGE,
+    DEFAULT_MULTIPLICITY
+)
+
 from ..services import (
     pubchem_service,
     conversion_service,
     calculation_service,
     database_service
 )
-from ..utils.config_manager import get_database_schema
+from ..config.defaults import get_database_schema
+from ..utils.file_utils import ensure_directory_exists
 
 
 def sanitize_identifier(identifier: str) -> str:
@@ -31,9 +39,9 @@ def sanitize_identifier(identifier: str) -> str:
         A sanitized directory-safe string
     """
     # Replace unsafe characters and spaces
-    sanitized = re.sub(r'[<>:"/\\|?*\s]', '_', identifier)
+    sanitized = re.sub(FILENAME_SANITIZATION_PATTERN, '_', identifier)
     # Remove multiple underscores
-    sanitized = re.sub(r'_+', '_', sanitized)
+    sanitized = re.sub(MULTIPLE_UNDERSCORES_PATTERN, '_', sanitized)
     # Remove leading/trailing underscores and dots
     sanitized = sanitized.strip('_.')
     # Ensure we have something left
@@ -93,6 +101,138 @@ def extract_smiles_from_sdf(sdf_path: str) -> Optional[str]:
         return None
 
 
+def _prepare_working_directory(identifier: str, config: Dict[str, Any]) -> Optional[Path]:
+    """
+    Prepare the working directory for molecule processing.
+    
+    Args:
+        identifier: Molecule identifier
+        config: Configuration dictionary
+        
+    Returns:
+        Path to working directory or None if creation failed
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        sanitized_name = sanitize_identifier(identifier)
+        repository_base = config.get('repository_base_path', 'repository')
+        work_dir = Path(repository_base) / sanitized_name
+        
+        if ensure_directory_exists(str(work_dir)):
+            logger.info(f"Prepared working directory: {work_dir}")
+            return work_dir
+        else:
+            logger.error(f"Failed to create working directory: {work_dir}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error preparing working directory: {e}")
+        return None
+
+
+def _download_structure(identifier: str, work_dir: Path) -> Optional[str]:
+    """
+    Download molecular structure from PubChem.
+    
+    Args:
+        identifier: Molecule identifier (name or SMILES)
+        work_dir: Working directory for output
+        
+    Returns:
+        Path to downloaded SDF file or None if failed
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info("Step 1/8: Downloading structure from PubChem...")
+        sdf_path = pubchem_service.download_sdf_by_name(identifier, str(work_dir))
+        
+        if sdf_path:
+            logger.info(f"Downloaded SDF structure: {sdf_path}")
+            return sdf_path
+        else:
+            logger.error(f"Failed to download SDF structure for: {identifier}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Error downloading structure: {e}")
+        return None
+
+
+def _prepare_molecule_data(identifier: str, sdf_path: str, xyz_path: str, 
+                         crest_best_xyz: str, pm7_energy: float) -> Dict[str, Any]:
+    """
+    Prepare molecule data dictionary for database storage.
+    
+    Args:
+        identifier: Molecule identifier
+        sdf_path: Path to SDF file
+        xyz_path: Path to XYZ file
+        crest_best_xyz: Path to best CREST conformer
+        pm7_energy: Calculated PM7 energy
+        
+    Returns:
+        Dictionary with molecule data ready for database storage
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Extract SMILES from SDF
+    smiles = extract_smiles_from_sdf(sdf_path)
+    if not smiles:
+        logger.warning(f"Could not extract SMILES from SDF, using identifier: {identifier}")
+        smiles = identifier
+    
+    # Prepare molecule data
+    molecule_data = {
+        'smiles': smiles,
+        'identifier': identifier,
+        'sdf_path': str(Path(sdf_path).absolute()),
+        'xyz_path': str(Path(xyz_path).absolute()),
+        'crest_best_xyz_path': str(Path(crest_best_xyz).absolute()),
+        'pm7_energy': pm7_energy,
+        'charge': DEFAULT_CHARGE,
+        'multiplicity': DEFAULT_MULTIPLICITY
+    }
+    
+    logger.info("Step 7/8: Collected molecule data")
+    logger.info(f"Final results - SMILES: {smiles}, Energy: {pm7_energy} kcal/mol")
+    
+    return molecule_data
+
+
+def _save_to_database(molecule_data: Dict[str, Any], config: Dict[str, Any]) -> bool:
+    """
+    Save molecule data to the database.
+    
+    Args:
+        molecule_data: Molecule data dictionary
+        config: Configuration dictionary
+        
+    Returns:
+        True if save was successful
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info("Step 8/8: Saving results to database...")
+        schema = get_database_schema()
+        db_path = config['database']['pm7_db_path']
+        
+        success = database_service.append_to_database(molecule_data, db_path, schema)
+        
+        if success:
+            logger.info("Successfully saved results to database")
+            return True
+        else:
+            logger.error("Failed to save results to database")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error saving to database: {e}")
+        return False
+
+
 def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
     """
     Process a single molecule through the complete computational chemistry pipeline.
@@ -112,37 +252,18 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         True if processing completed successfully, False otherwise
     """
     logger = logging.getLogger(__name__)
-    
-    # Log start of processing
     logger.info(f"Starting pipeline processing for molecule: {identifier}")
     
     try:
         # Step 1: Prepare working directory
-        sanitized_name = sanitize_identifier(identifier)
-        repository_base = config.get('repository_base_path', 'repository')
-        work_dir = Path(repository_base) / sanitized_name
-        work_dir.mkdir(parents=True, exist_ok=True)
-        
-        logger.info(f"Created working directory: {work_dir}")
-        
-        # Step 2: Download initial structure (SDF) from PubChem
-        logger.info("Step 1/8: Downloading structure from PubChem...")
-        sdf_path = pubchem_service.download_sdf_by_name(
-            identifier, 
-            str(work_dir)
-        )
-        
-        if not sdf_path:
-            logger.error(f"Failed to download SDF structure for: {identifier}")
+        work_dir = _prepare_working_directory(identifier, config)
+        if not work_dir:
             return False
         
-        logger.info(f"Downloaded SDF structure: {sdf_path}")
-        
-        # Step 3: Extract SMILES from SDF
-        smiles = extract_smiles_from_sdf(sdf_path)
-        if not smiles:
-            logger.warning(f"Could not extract SMILES from SDF, using identifier: {identifier}")
-            smiles = identifier
+        # Step 2: Download molecular structure
+        sdf_path = _download_structure(identifier, work_dir)
+        if not sdf_path:
+            return False
         
         # Step 4: Convert SDF to XYZ for CREST
         logger.info("Step 2/8: Converting SDF to XYZ format...")
@@ -203,38 +324,14 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         
         logger.info(f"Extracted PM7 energy: {pm7_energy} kcal/mol")
         
-        # Step 9: Collect all results
-        logger.info("Step 7/8: Collecting results...")
-        molecule_data = {
-            'smiles': smiles,
-            'identifier': identifier,
-            'sdf_path': str(Path(sdf_path).absolute()),
-            'xyz_path': str(Path(xyz_path).absolute()),
-            'crest_best_xyz_path': str(Path(crest_best_xyz).absolute()),
-            'pm7_energy': pm7_energy,
-            'charge': 0,  # Default charge
-            'multiplicity': 1  # Default multiplicity
-        }
+        # Step 9: Prepare molecule data
+        molecule_data = _prepare_molecule_data(identifier, sdf_path, xyz_path, crest_best_xyz, pm7_energy)
         
         # Step 10: Save to database
-        logger.info("Step 8/8: Saving results to database...")
-        schema = get_database_schema()
-        db_path = config['database']['pm7_db_path']
-        
-        success = database_service.append_to_database(
-            molecule_data,
-            db_path,
-            schema
-        )
-        
-        if not success:
-            logger.error(f"Failed to save results to database for: {identifier}")
+        if not _save_to_database(molecule_data, config):
             return False
         
-        # Log successful completion
         logger.info(f"Successfully completed pipeline processing for: {identifier}")
-        logger.info(f"Final results - SMILES: {smiles}, Energy: {pm7_energy} kcal/mol")
-        
         return True
         
     except Exception as e:

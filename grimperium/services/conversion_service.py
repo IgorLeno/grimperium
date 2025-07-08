@@ -11,6 +11,8 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+from ..constants import CONVERSION_TIMEOUT, EXECUTABLE_VALIDATION_TIMEOUT
+
 
 def convert_file(input_path: str, output_format: str) -> Optional[str]:
     """
@@ -65,7 +67,7 @@ def convert_file(input_path: str, output_format: str) -> Optional[str]:
             command,
             capture_output=True,
             text=True,
-            timeout=60  # 60 second timeout for conversion
+            timeout=CONVERSION_TIMEOUT
         )
         
         # Check if conversion was successful
@@ -128,7 +130,7 @@ def get_supported_formats() -> list[str]:
             ["obabel", "-L", "formats"],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=EXECUTABLE_VALIDATION_TIMEOUT
         )
         
         if result.returncode != 0:

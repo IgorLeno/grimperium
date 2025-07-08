@@ -13,6 +13,12 @@ from typing import Optional
 
 import pubchempy as pcp
 
+from ..constants import (
+    FILENAME_SANITIZATION_PATTERN,
+    PUBCHEM_FILENAME_FALLBACK,
+    PUBCHEM_SANITIZATION_REPLACEMENT
+)
+
 
 def sanitize_filename(name: str) -> str:
     """
@@ -27,14 +33,13 @@ def sanitize_filename(name: str) -> str:
     Returns:
         A sanitized filename-safe string
     """
-    # Replace spaces with underscores and remove unsafe characters
-    sanitized = re.sub(r'[<>:"/\\|?*]', '', name)
-    sanitized = re.sub(r'\s+', '_', sanitized)
+    # Replace unsafe characters and spaces using constants
+    sanitized = re.sub(FILENAME_SANITIZATION_PATTERN, PUBCHEM_SANITIZATION_REPLACEMENT, name)
     # Remove leading/trailing dots and spaces
     sanitized = sanitized.strip('. ')
     # Ensure we have something left
     if not sanitized:
-        sanitized = "unknown_compound"
+        sanitized = PUBCHEM_FILENAME_FALLBACK
     return sanitized
 
 

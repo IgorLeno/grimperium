@@ -13,6 +13,8 @@ from typing import Dict, List, Set
 import pandas as pd
 from filelock import FileLock
 
+from ..constants import DATABASE_LOCK_TIMEOUT
+
 
 def get_existing_smiles(db_path: str) -> Set[str]:
     """
@@ -159,7 +161,7 @@ def append_to_database(
         
         # Use file locking to prevent race conditions
         lock_path = f"{db_path}.lock"
-        lock = FileLock(lock_path, timeout=30)  # 30 second timeout
+        lock = FileLock(lock_path, timeout=DATABASE_LOCK_TIMEOUT)
         
         logger.debug(f"Attempting to acquire lock for database: {db_path}")
         

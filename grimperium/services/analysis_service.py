@@ -10,6 +10,12 @@ import logging
 from typing import Dict, Any, Optional, Set
 
 from .database_service import get_existing_smiles, get_database_stats
+from ..constants import (
+    DEFAULT_TIME_PER_MOLECULE,
+    SECONDS_PER_HOUR,
+    TIME_DISPLAY_THRESHOLDS,
+    BYTES_PER_MB
+)
 
 
 def generate_progress_report(cbs_db_path: str, pm7_db_path: str) -> Dict[str, Any]:
@@ -230,7 +236,7 @@ def find_missing_molecules(cbs_db_path: str, pm7_db_path: str, limit: Optional[i
 def calculate_completion_eta(
     total_remaining: int, 
     recent_completion_rate: float,
-    time_per_molecule: float = 300.0  # 5 minutes default
+    time_per_molecule: float = DEFAULT_TIME_PER_MOLECULE
 ) -> Dict[str, Any]:
     """
     Calculate estimated time to completion based on current progress.
@@ -259,14 +265,14 @@ def calculate_completion_eta(
             eta_hours = total_remaining / recent_completion_rate
         else:
             # Fallback to time per molecule estimate
-            eta_hours = (total_remaining * time_per_molecule) / 3600
+            eta_hours = (total_remaining * time_per_molecule) / SECONDS_PER_HOUR
         
-        eta_days = eta_hours / 24
+        eta_days = eta_hours / (TIME_DISPLAY_THRESHOLDS['days'] / SECONDS_PER_HOUR)
         
         # Create human-readable ETA
         if eta_hours < 1:
-            eta_human = f"{eta_hours * 60:.0f} minutes"
-        elif eta_hours < 24:
+            eta_human = f"{eta_hours * TIME_DISPLAY_THRESHOLDS['minutes']:.0f} minutes"
+        elif eta_hours < (TIME_DISPLAY_THRESHOLDS['days'] / SECONDS_PER_HOUR):
             eta_human = f"{eta_hours:.1f} hours"
         elif eta_days < 7:
             eta_human = f"{eta_days:.1f} days"

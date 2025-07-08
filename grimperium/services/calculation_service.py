@@ -12,6 +12,14 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+from ..constants import (
+    CREST_TIMEOUT,
+    MOPAC_TIMEOUT,
+    CONVERSION_TIMEOUT,
+    ENERGY_EXTRACTION_PATTERN,
+    EXECUTABLE_VALIDATION_TIMEOUT
+)
+
 
 def run_crest(input_xyz_path: str, output_dir: str, crest_keywords: str) -> Optional[str]:
     """
@@ -64,7 +72,7 @@ def run_crest(input_xyz_path: str, output_dir: str, crest_keywords: str) -> Opti
             cwd=str(output_path.absolute()),
             capture_output=True,
             text=True,
-            timeout=3600  # 1 hour timeout for CREST calculations
+            timeout=CREST_TIMEOUT
         )
         
         # Check execution result
@@ -184,7 +192,7 @@ def run_mopac(input_file_path: str, mopac_keywords: str) -> Optional[str]:
             cwd=str(mop_file.parent.absolute()),
             capture_output=True,
             text=True,
-            timeout=1800  # 30 minute timeout for MOPAC calculations
+            timeout=MOPAC_TIMEOUT
         )
         
         # Check execution result
@@ -260,18 +268,14 @@ def parse_mopac_output(output_file_path: str) -> Optional[float]:
         
         logger.debug(f"Parsing MOPAC output file: {output_file_path}")
         
-        # Regular expression pattern to match final heat of formation
-        # This pattern matches lines like:
-        # "FINAL HEAT OF FORMATION = -74.326 KCAL/MOL"
-        # "FINAL HEAT OF FORMATION =    -74.326 KCAL/MOL"
-        heat_formation_pattern = r'FINAL\s+HEAT\s+OF\s+FORMATION\s*=\s*([-+]?\d*\.?\d+)\s*KCAL'
+        # Use the standard energy extraction pattern from constants
         
         # Read and search the output file
         with open(output_file, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
             
         # Search for the pattern
-        matches = re.findall(heat_formation_pattern, content, re.IGNORECASE)
+        matches = re.findall(ENERGY_EXTRACTION_PATTERN, content, re.IGNORECASE)
         
         if not matches:
             logger.warning(f"No 'FINAL HEAT OF FORMATION' found in: {output_file_path}")
@@ -308,7 +312,7 @@ def validate_crest_installation() -> bool:
             ["crest", "--help"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=EXECUTABLE_VALIDATION_TIMEOUT
         )
         return result.returncode == 0
     except Exception:
@@ -327,7 +331,7 @@ def validate_mopac_installation() -> bool:
             ["mopac"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=EXECUTABLE_VALIDATION_TIMEOUT
         )
         # MOPAC typically returns non-zero when called without arguments
         # but should not raise FileNotFoundError
