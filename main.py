@@ -31,13 +31,15 @@ from grimperium.utils.config_manager import load_config
 from grimperium.services.pipeline_orchestrator import (
     process_single_molecule,
     process_molecule_batch,
-    validate_pipeline_setup
+    validate_pipeline_setup,
+    get_molecule_smiles
 )
 from grimperium.services.analysis_service import (
     generate_progress_report,
     get_detailed_database_analysis,
     find_missing_molecules
 )
+from grimperium.services import database_service
 
 # Initialize Rich console
 console = Console()
@@ -99,13 +101,45 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
     # Process the molecule
     rich_print(f"[green]🚀 Processing molecule ({identifier_type}): {identifier}[/green]")
     
+    # Step 1: Get SMILES without progress spinner to allow user interaction
+    rich_print("[yellow]📋 Getting molecule structure and checking for duplicates...[/yellow]")
+    smiles = get_molecule_smiles(identifier, config)
+    
+    if not smiles:
+        rich_print(f"[red]❌ Failed to get SMILES for: {identifier}[/red]")
+        return False
+    
+    # Step 2: Check for duplicates in database
+    db_path = config['database']['pm7_db_path']
+    existing_smiles = database_service.get_existing_smiles(db_path)
+    
+    overwrite = False
+    if smiles in existing_smiles:
+        rich_print(f"[yellow]⚠️  Molecule with SMILES '{smiles}' already exists in database[/yellow]")
+        
+        # Import questionary for user interaction
+        import questionary
+        
+        # Prompt user for overwrite confirmation
+        overwrite = questionary.confirm(
+            f"A molécula com SMILES '{smiles}' já existe no banco de dados. Deseja sobrescrever a entrada existente?",
+            default=False
+        ).ask()
+        
+        if not overwrite:
+            rich_print(f"[green]✅ Cálculo para '{smiles}' pulado pelo usuário[/green]")
+            return True  # Return True since this is not an error, just user choice
+        else:
+            rich_print(f"[yellow]🔄 Usuário confirmou sobrescrever entrada para '{smiles}'[/yellow]")
+    
+    # Step 3: Run the heavy calculations with progress spinner
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         transient=True,
     ) as progress:
-        task = progress.add_task("Processing molecule...", total=None)
-        success = process_single_molecule(identifier, config)
+        task = progress.add_task("Running calculations...", total=None)
+        success = process_single_molecule(identifier, config, overwrite)
     
     # Display results
     if success:
@@ -192,7 +226,7 @@ def _execute_batch_logic(file_path: str, config_file: str, verbose: bool = False
             progress.update(task, description=f"Processing: {identifier[:30]}...")
             
             try:
-                success = process_single_molecule(identifier, config)
+                success = process_single_molecule(identifier, config, overwrite=False)
                 if success:
                     successful_count += 1
                 else:
@@ -707,7 +741,7 @@ def get_library_version(library_name: str) -> str:
             return typer.__version__
         elif library_name == "rich":
             import rich
-            return rich.__version__
+            return getattr(rich, '__version__', 'Version unavailable')
         elif library_name == "pydantic":
             import pydantic
             return pydantic.__version__

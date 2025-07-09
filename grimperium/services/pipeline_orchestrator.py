@@ -201,6 +201,42 @@ def _prepare_molecule_data(identifier: str, sdf_path: str, xyz_path: str,
     return molecule_data
 
 
+def _prepare_molecule_data_with_smiles(identifier: str, sdf_path: str, xyz_path: str, 
+                                     crest_best_xyz: str, pm7_energy: float, smiles: str) -> Dict[str, Any]:
+    """
+    Prepare molecule data dictionary for database storage with pre-extracted SMILES.
+    
+    Args:
+        identifier: Molecule identifier
+        sdf_path: Path to SDF file
+        xyz_path: Path to XYZ file
+        crest_best_xyz: Path to best CREST conformer
+        pm7_energy: Calculated PM7 energy
+        smiles: Pre-extracted SMILES string
+        
+    Returns:
+        Dictionary with molecule data ready for database storage
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Prepare molecule data
+    molecule_data = {
+        'smiles': smiles,
+        'identifier': identifier,
+        'sdf_path': str(Path(sdf_path).absolute()),
+        'xyz_path': str(Path(xyz_path).absolute()),
+        'crest_best_xyz_path': str(Path(crest_best_xyz).absolute()),
+        'pm7_energy': pm7_energy,
+        'charge': DEFAULT_CHARGE,
+        'multiplicity': DEFAULT_MULTIPLICITY
+    }
+    
+    logger.info("Step 8/8: Collected molecule data")
+    logger.info(f"Final results - SMILES: {smiles}, Energy: {pm7_energy} kcal/mol")
+    
+    return molecule_data
+
+
 def _save_to_database(molecule_data: Dict[str, Any], config: Dict[str, Any]) -> bool:
     """
     Save molecule data to the database.
@@ -233,20 +269,101 @@ def _save_to_database(molecule_data: Dict[str, Any], config: Dict[str, Any]) -> 
         return False
 
 
-def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
+def _save_to_database_with_overwrite(molecule_data: Dict[str, Any], config: Dict[str, Any], overwrite: bool = False) -> bool:
     """
-    Process a single molecule through the complete computational chemistry pipeline.
+    Save molecule data to the database with overwrite option.
     
-    This function orchestrates the complete workflow for a single molecule:
+    Args:
+        molecule_data: Molecule data dictionary
+        config: Configuration dictionary
+        overwrite: If True, use update function to overwrite existing entries
+        
+    Returns:
+        True if save was successful
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info("Step 8/8: Saving results to database...")
+        schema = get_database_schema()
+        db_path = config['database']['pm7_db_path']
+        
+        if overwrite:
+            success = database_service.update_database_entry(molecule_data, db_path, schema)
+        else:
+            success = database_service.append_to_database(molecule_data, db_path, schema)
+        
+        if success:
+            logger.info("Successfully saved results to database")
+            return True
+        else:
+            logger.error("Failed to save results to database")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error saving to database: {e}")
+        return False
+
+
+def get_molecule_smiles(identifier: str, config: Dict[str, Any]) -> Optional[str]:
+    """
+    Get SMILES string for a molecule by downloading and extracting from PubChem.
+    
+    This function handles the initial steps of the pipeline without the heavy calculations:
     1. Download structure from PubChem
-    2. Convert formats as needed
-    3. Run conformational search with CREST
-    4. Run quantum chemistry calculations with MOPAC
-    5. Extract and store results in database
+    2. Extract SMILES from the structure
     
     Args:
         identifier: Molecule identifier (name or SMILES)
         config: Configuration dictionary containing all settings
+        
+    Returns:
+        SMILES string if successful, None otherwise
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Getting SMILES for molecule: {identifier}")
+    
+    try:
+        # Step 1: Prepare working directory
+        work_dir = _prepare_working_directory(identifier, config)
+        if not work_dir:
+            return None
+        
+        # Step 2: Download molecular structure
+        sdf_path = _download_structure(identifier, work_dir)
+        if not sdf_path:
+            return None
+        
+        # Step 3: Extract SMILES
+        smiles = extract_smiles_from_sdf(sdf_path)
+        if not smiles:
+            logger.warning(f"Could not extract SMILES from SDF, using identifier: {identifier}")
+            smiles = identifier
+        
+        logger.info(f"Successfully extracted SMILES: {smiles}")
+        return smiles
+        
+    except Exception as e:
+        logger.error(f"Error getting SMILES for molecule {identifier}: {e}")
+        return None
+
+
+def process_single_molecule(identifier: str, config: Dict[str, Any], overwrite: bool = False) -> bool:
+    """
+    Process a single molecule through the complete computational chemistry pipeline.
+    
+    This function orchestrates the complete workflow for a single molecule:
+    1. Download structure from PubChem (if not already done)
+    2. Extract SMILES 
+    3. Convert formats as needed
+    4. Run conformational search with CREST
+    5. Run quantum chemistry calculations with MOPAC
+    6. Extract and store results in database
+    
+    Args:
+        identifier: Molecule identifier (name or SMILES)
+        config: Configuration dictionary containing all settings
+        overwrite: Whether to overwrite existing database entries
         
     Returns:
         True if processing completed successfully, False otherwise
@@ -265,8 +382,15 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         if not sdf_path:
             return False
         
+        # Step 3: Extract SMILES
+        logger.info("Step 2/8: Extracting SMILES...")
+        smiles = extract_smiles_from_sdf(sdf_path)
+        if not smiles:
+            logger.warning(f"Could not extract SMILES from SDF, using identifier: {identifier}")
+            smiles = identifier
+        
         # Step 4: Convert SDF to XYZ for CREST
-        logger.info("Step 2/8: Converting SDF to XYZ format...")
+        logger.info("Step 3/8: Converting SDF to XYZ format...")
         xyz_path = conversion_service.convert_file(sdf_path, "xyz")
         
         if not xyz_path:
@@ -276,7 +400,7 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         logger.info(f"Converted to XYZ format: {xyz_path}")
         
         # Step 5: Run CREST conformational search
-        logger.info("Step 3/8: Running CREST conformational search...")
+        logger.info("Step 4/8: Running CREST conformational search...")
         crest_output_dir = work_dir / "crest_output"
         crest_output_dir.mkdir(exist_ok=True)
         
@@ -294,7 +418,7 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         logger.info(f"CREST completed successfully: {crest_best_xyz}")
         
         # Step 6: Convert best conformer to PDB for MOPAC
-        logger.info("Step 4/8: Converting best conformer to PDB format...")
+        logger.info("Step 5/8: Converting best conformer to PDB format...")
         pdb_path = conversion_service.convert_file(crest_best_xyz, "pdb")
         
         if not pdb_path:
@@ -304,7 +428,7 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         logger.info(f"Converted best conformer to PDB: {pdb_path}")
         
         # Step 7: Run MOPAC energy calculation
-        logger.info("Step 5/8: Running MOPAC energy calculation...")
+        logger.info("Step 6/8: Running MOPAC energy calculation...")
         mopac_keywords = config.get('mopac_keywords', 'PM7 PRECISE XYZ')
         mopac_output = calculation_service.run_mopac(pdb_path, mopac_keywords)
         
@@ -315,7 +439,7 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         logger.info(f"MOPAC calculation completed: {mopac_output}")
         
         # Step 8: Parse MOPAC output to extract energy
-        logger.info("Step 6/8: Extracting energy from MOPAC output...")
+        logger.info("Step 7/8: Extracting energy from MOPAC output...")
         pm7_energy = calculation_service.parse_mopac_output(mopac_output)
         
         if pm7_energy is None:
@@ -324,11 +448,11 @@ def process_single_molecule(identifier: str, config: Dict[str, Any]) -> bool:
         
         logger.info(f"Extracted PM7 energy: {pm7_energy} kcal/mol")
         
-        # Step 9: Prepare molecule data
-        molecule_data = _prepare_molecule_data(identifier, sdf_path, xyz_path, crest_best_xyz, pm7_energy)
+        # Step 9: Prepare molecule data - use extracted SMILES
+        molecule_data = _prepare_molecule_data_with_smiles(identifier, sdf_path, xyz_path, crest_best_xyz, pm7_energy, smiles)
         
-        # Step 10: Save to database
-        if not _save_to_database(molecule_data, config):
+        # Step 10: Save to database (with overwrite if specified)
+        if not _save_to_database_with_overwrite(molecule_data, config, overwrite):
             return False
         
         logger.info(f"Successfully completed pipeline processing for: {identifier}")

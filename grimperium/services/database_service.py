@@ -91,6 +91,129 @@ def get_existing_smiles(db_path: str) -> Set[str]:
         return set()
 
 
+def update_database_entry(
+    molecule_data: Dict[str, any], 
+    db_path: str, 
+    schema: List[str]
+) -> bool:
+    """
+    Update an existing entry in the database or create a new one.
+    
+    This function updates an existing molecule entry in the database
+    based on the SMILES key, or creates a new entry if it doesn't exist.
+    
+    Args:
+        molecule_data: Dictionary containing molecular data to update/insert
+        db_path: Path to the CSV database file
+        schema: List of column names defining the database schema/order
+        
+    Returns:
+        True if data was successfully updated/inserted, False otherwise
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Validate input data
+        if not isinstance(molecule_data, dict):
+            logger.error("molecule_data must be a dictionary")
+            return False
+            
+        if 'smiles' not in molecule_data:
+            logger.error("molecule_data must contain 'smiles' key")
+            return False
+            
+        if not molecule_data['smiles']:
+            logger.error("SMILES cannot be empty or None")
+            return False
+            
+        smiles = str(molecule_data['smiles']).strip()
+        if not smiles:
+            logger.error("SMILES cannot be empty after stripping")
+            return False
+        
+        # Validate schema
+        if not isinstance(schema, list) or not schema:
+            logger.error("Schema must be a non-empty list")
+            return False
+            
+        if 'smiles' not in schema:
+            logger.error("Schema must include 'smiles' column")
+            return False
+        
+        # Create database directory if needed
+        db_file = Path(db_path)
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Use file locking to prevent race conditions
+        lock_path = f"{db_path}.lock"
+        lock = FileLock(lock_path, timeout=DATABASE_LOCK_TIMEOUT)
+        
+        logger.debug(f"Attempting to acquire lock for database: {db_path}")
+        
+        try:
+            with lock:
+                logger.debug(f"Lock acquired for database: {db_path}")
+                
+                # Check if database file exists
+                if db_file.exists() and db_file.stat().st_size > 0:
+                    # File exists and has content - read and update
+                    df = pd.read_csv(db_path)
+                    
+                    # Check if SMILES already exists
+                    existing_mask = df['smiles'] == smiles
+                    
+                    if existing_mask.any():
+                        # Update existing entry
+                        logger.info(f"Updating existing entry with SMILES '{smiles}' in database")
+                        for col in schema:
+                            if col in molecule_data:
+                                df.loc[existing_mask, col] = molecule_data[col]
+                    else:
+                        # Add new entry
+                        logger.info(f"Adding new entry with SMILES '{smiles}' to database")
+                        row_data = {}
+                        for col in schema:
+                            row_data[col] = molecule_data.get(col, None)
+                        
+                        new_row_df = pd.DataFrame([row_data], columns=schema)
+                        df = pd.concat([df, new_row_df], ignore_index=True)
+                    
+                    # Write updated DataFrame
+                    df.to_csv(db_path, mode='w', header=True, index=False, encoding='utf-8')
+                    
+                else:
+                    # File doesn't exist or is empty - create new database
+                    logger.info(f"Creating new database: {db_path}")
+                    
+                    # Prepare data for new file
+                    row_data = {}
+                    for col in schema:
+                        row_data[col] = molecule_data.get(col, None)
+                    
+                    # Create DataFrame with proper schema
+                    new_df = pd.DataFrame([row_data], columns=schema)
+                    
+                    # Write new file with header
+                    new_df.to_csv(
+                        db_path,
+                        mode='w',           # write mode
+                        header=True,        # include header
+                        index=False,        # don't write index
+                        encoding='utf-8'
+                    )
+                
+                logger.info(f"Successfully saved molecular data to database: {db_path}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error while holding database lock: {e}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Unexpected error updating database: {e}")
+        return False
+
+
 def append_to_database(
     molecule_data: Dict[str, any], 
     db_path: str, 
