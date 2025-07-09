@@ -12,7 +12,8 @@ from pathlib import Path
 REQUIRED_CONFIG_SECTIONS = [
     'executables',
     'database',
-    'repository_base_path'
+    'repository_base_path',
+    'general_settings'
 ]
 
 # Required executable keys
@@ -38,6 +39,9 @@ DEFAULT_CONFIG = {
     'crest_keywords': '--gfn2',
     'mopac_keywords': 'PM7 PRECISE XYZ',
     'repository_base_path': 'repository',
+    'general_settings': {
+        'verbose': False
+    },
     'database': {
         'cbs_db_path': 'data/thermo_cbs.csv',
         'pm7_db_path': 'data/thermo_pm7.csv'
@@ -71,6 +75,11 @@ CONFIG_VALIDATION_RULES = {
     'repository_base_path': {
         'type': str,
         'required': True
+    },
+    'general_settings': {
+        'type': dict,
+        'required': True,
+        'keys': ['verbose']
     },
     'crest_keywords': {
         'type': str,
@@ -150,5 +159,15 @@ def validate_config_structure(config: Dict[str, Any]) -> List[str]:
     if 'repository_base_path' in config:
         if not isinstance(config['repository_base_path'], str):
             errors.append("'repository_base_path' must be a string")
+    
+    # Validate general_settings section
+    if 'general_settings' in config:
+        if not isinstance(config['general_settings'], dict):
+            errors.append("'general_settings' must be a dictionary")
+        else:
+            if 'verbose' not in config['general_settings']:
+                errors.append("Missing required general_settings key: verbose")
+            elif not isinstance(config['general_settings']['verbose'], bool):
+                errors.append("'general_settings.verbose' must be a boolean")
     
     return errors

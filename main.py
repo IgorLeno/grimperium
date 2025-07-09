@@ -27,7 +27,7 @@ from rich.table import Table
 # Define project root for absolute path resolution
 PROJECT_ROOT = Path(__file__).resolve().parent
 
-from grimperium.utils.config_manager import load_config
+from grimperium.utils.config_manager import load_config, setup_logging
 from grimperium.services.pipeline_orchestrator import (
     process_single_molecule,
     process_molecule_batch,
@@ -51,16 +51,6 @@ app = typer.Typer(
 )
 
 
-def setup_logging(verbose: bool = False):
-    """Setup logging configuration based on verbosity level."""
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-
-
 # BUSINESS LOGIC FUNCTIONS (DECOUPLED FROM UI)
 
 def _execute_single_molecule_logic(identifier: str, identifier_type: str, config_file: str, verbose: bool = False) -> bool:
@@ -76,8 +66,6 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
     Returns:
         bool: True if processing was successful, False otherwise
     """
-    setup_logging(verbose)
-    
     # Display welcome message
     console.print(Panel.fit(
         "[bold blue]🧪 Grimperium v2[/bold blue]\n"
@@ -91,6 +79,9 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return False
+    
+    # Setup logging with the loaded configuration
+    setup_logging(config)
     
     # Validate pipeline setup
     rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
@@ -164,7 +155,6 @@ def _execute_batch_logic(file_path: str, config_file: str, verbose: bool = False
     Returns:
         dict: Processing results with counts
     """
-    setup_logging(verbose)
     
     # Display welcome message
     console.print(Panel.fit(
@@ -199,6 +189,9 @@ def _execute_batch_logic(file_path: str, config_file: str, verbose: bool = False
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return {"error": f"Failed to load configuration from: {config_file}"}
+    
+    # Setup logging with the loaded configuration
+    setup_logging(config)
     
     # Validate pipeline setup
     rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
@@ -341,6 +334,9 @@ def _execute_info_logic(config_file: str) -> bool:
     if config:
         console.print("[green]✅ Configuração carregada com sucesso[/green]")
         
+        # Setup logging with the loaded configuration
+        setup_logging(config)
+        
         # Validate executables
         from grimperium.utils.config_manager import validate_executables
         if validate_executables(config):
@@ -398,6 +394,9 @@ def _execute_report_logic(config_file: str, detailed: bool = False, missing: int
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return False
+    
+    # Setup logging with the loaded configuration
+    setup_logging(config)
     
     # Get database paths from configuration
     cbs_db_path = config['database']['cbs_db_path']

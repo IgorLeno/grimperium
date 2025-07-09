@@ -7,6 +7,9 @@ mopac_keywords: 'PM7 EF PRECISE GNORM=0.01 NOINTER GRAPHF VECTORS MMOK CYCLES=20
 crest_keywords: '--gfn2'
 repository_base_path: 'repository'
 
+general_settings:
+  verbose: false
+
 logging:
   log_file: 'logs/grim_details.log'
   console_level: 'INFO'

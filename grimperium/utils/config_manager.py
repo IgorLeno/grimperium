@@ -310,3 +310,68 @@ def validate_executables(config: Dict[str, Any]) -> bool:
     except Exception as e:
         logger.error(f"Error during executable validation: {e}")
         return False
+
+
+def setup_logging(config: Dict[str, Any]) -> None:
+    """
+    Setup logging configuration with separate console and file handlers.
+    
+    This function configures logging to:
+    - Always log detailed information (INFO level) to file
+    - Show INFO messages on console only if verbose=True
+    - Always show WARNING+ messages on console
+    
+    Args:
+        config: Configuration dictionary containing logging and general settings
+    """
+    # Get logging configuration
+    logging_config = config.get('logging', {})
+    general_settings = config.get('general_settings', {})
+    
+    # Extract settings with defaults
+    log_file = logging_config.get('log_file', 'logs/grim_details.log')
+    verbose = general_settings.get('verbose', False)
+    
+    # Clear any existing handlers
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Create logs directory if it doesn't exist
+    log_path = Path(log_file)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create formatters
+    file_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    console_formatter = logging.Formatter(
+        '%(levelname)s - %(message)s'
+    )
+    
+    # Setup file handler (always INFO level for detailed logging)
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(file_formatter)
+    
+    # Setup console handler (level depends on verbose setting)
+    console_handler = logging.StreamHandler()
+    if verbose:
+        console_handler.setLevel(logging.INFO)
+    else:
+        console_handler.setLevel(logging.WARNING)
+    console_handler.setFormatter(console_formatter)
+    
+    # Configure root logger
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    # Log the configuration
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging configured - File: {log_file}, Console verbose: {verbose}")
+    
+    # Suppress noisy third-party loggers
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger('requests').setLevel(logging.WARNING)
