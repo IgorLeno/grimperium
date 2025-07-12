@@ -27,20 +27,17 @@ from rich.table import Table
 # Define project root for absolute path resolution
 PROJECT_ROOT = Path(__file__).resolve().parent
 
-from grimperium.utils.config_manager import load_config, setup_logging
+from grimperium.utils.config_manager import load_config
 from grimperium.services.pipeline_orchestrator import (
     process_single_molecule,
     process_molecule_batch,
-    validate_pipeline_setup,
-    get_molecule_smiles
+    validate_pipeline_setup
 )
 from grimperium.services.analysis_service import (
     generate_progress_report,
     get_detailed_database_analysis,
     find_missing_molecules
 )
-from grimperium.services import database_service
-from grimperium.ui.interactive_batch import run_interactive_batch
 
 # Initialize Rich console
 console = Console()
@@ -50,6 +47,16 @@ app = typer.Typer(
     help="Grimperium v2 - Computational Chemistry Workflow Automation Tool",
     add_completion=False,
 )
+
+
+def setup_logging(verbose: bool = False):
+    """Setup logging configuration based on verbosity level."""
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
 
 
 # BUSINESS LOGIC FUNCTIONS (DECOUPLED FROM UI)
@@ -67,6 +74,8 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
     Returns:
         bool: True if processing was successful, False otherwise
     """
+    setup_logging(verbose)
+    
     # Display welcome message
     console.print(Panel.fit(
         "[bold blue]🧪 Grimperium v2[/bold blue]\n"
@@ -81,9 +90,6 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return False
     
-    # Setup logging with the loaded configuration
-    setup_logging(config)
-    
     # Validate pipeline setup
     rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
     if not validate_pipeline_setup(config):
@@ -93,45 +99,13 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
     # Process the molecule
     rich_print(f"[green]🚀 Processing molecule ({identifier_type}): {identifier}[/green]")
     
-    # Step 1: Get SMILES without progress spinner to allow user interaction
-    rich_print("[yellow]📋 Getting molecule structure and checking for duplicates...[/yellow]")
-    smiles = get_molecule_smiles(identifier, config)
-    
-    if not smiles:
-        rich_print(f"[red]❌ Failed to get SMILES for: {identifier}[/red]")
-        return False
-    
-    # Step 2: Check for duplicates in database
-    db_path = config['database']['pm7_db_path']
-    existing_smiles = database_service.get_existing_smiles(db_path)
-    
-    overwrite = False
-    if smiles in existing_smiles:
-        rich_print(f"[yellow]⚠️  Molecule with SMILES '{smiles}' already exists in database[/yellow]")
-        
-        # Import questionary for user interaction
-        import questionary
-        
-        # Prompt user for overwrite confirmation
-        overwrite = questionary.confirm(
-            f"A molécula com SMILES '{smiles}' já existe no banco de dados. Deseja sobrescrever a entrada existente?",
-            default=False
-        ).ask()
-        
-        if not overwrite:
-            rich_print(f"[green]✅ Cálculo para '{smiles}' pulado pelo usuário[/green]")
-            return True  # Return True since this is not an error, just user choice
-        else:
-            rich_print(f"[yellow]🔄 Usuário confirmou sobrescrever entrada para '{smiles}'[/yellow]")
-    
-    # Step 3: Run the heavy calculations with progress spinner
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         transient=True,
     ) as progress:
-        task = progress.add_task("Running calculations...", total=None)
-        success = process_single_molecule(identifier, config, overwrite)
+        task = progress.add_task("Processing molecule...", total=None)
+        success = process_single_molecule(identifier, config)
     
     # Display results
     if success:
@@ -146,42 +120,118 @@ def _execute_single_molecule_logic(identifier: str, identifier_type: str, config
 
 def _execute_batch_logic(file_path: str, config_file: str, verbose: bool = False) -> dict:
     """
-    Execute interactive batch processing workflow.
+    Execute batch processing logic.
     
     Args:
-        file_path: Legacy parameter (ignored - using interactive workflow)
+        file_path: Path to file containing molecule identifiers
         config_file: Path to configuration file
         verbose: Enable verbose output
         
     Returns:
         dict: Processing results with counts
     """
+    setup_logging(verbose)
+    
+    # Display welcome message
+    console.print(Panel.fit(
+        "[bold blue]🧪 Grimperium v2 - Batch Mode[/bold blue]\n"
+        "[cyan]Computational Chemistry Workflow Automation[/cyan]",
+        border_style="blue"
+    ))
+    
+    # Validate input file
+    input_file = Path(file_path)
+    if not input_file.exists():
+        rich_print(f"[red]❌ Input file not found: {file_path}[/red]")
+        return {"error": f"Input file not found: {file_path}"}
+    
+    # Load molecule identifiers
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            identifiers = [line.strip() for line in f if line.strip()]
+    except Exception as e:
+        rich_print(f"[red]❌ Error reading input file: {e}[/red]")
+        return {"error": f"Error reading input file: {e}"}
+    
+    if not identifiers:
+        rich_print(f"[red]❌ No molecule identifiers found in: {file_path}[/red]")
+        return {"error": f"No molecule identifiers found in: {file_path}"}
+    
+    rich_print(f"[green]📄 Loaded {len(identifiers)} molecule identifiers[/green]")
+    
     # Load configuration
+    rich_print(f"[yellow]📋 Loading configuration from: {config_file}[/yellow]")
     config = load_config(config_file, PROJECT_ROOT)
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return {"error": f"Failed to load configuration from: {config_file}"}
     
-    # Setup logging with the loaded configuration
-    setup_logging(config)
-    
     # Validate pipeline setup
+    rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
     if not validate_pipeline_setup(config):
         rich_print("[red]❌ Pipeline setup validation failed[/red]")
         return {"error": "Pipeline setup validation failed"}
     
-    # Run interactive batch workflow
-    try:
-        if run_interactive_batch(config):
-            # If the workflow completed successfully, we need to get the final molecule list
-            # and process it. For now, we'll return a success indicator.
-            # The actual batch processing will be integrated into the interactive workflow.
-            return {"interactive_mode": True, "success": True}
-        else:
-            return {"interactive_mode": True, "cancelled": True}
-    except Exception as e:
-        rich_print(f"[red]❌ Error in interactive batch workflow: {e}[/red]")
-        return {"error": f"Interactive batch workflow error: {e}"}
+    # Process molecules with progress bar
+    rich_print("[green]🚀 Starting batch processing...[/green]")
+    
+    successful_count = 0
+    failed_count = 0
+    
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TextColumn("({task.completed}/{task.total})"),
+        TimeElapsedColumn(),
+    ) as progress:
+        
+        task = progress.add_task("Processing molecules...", total=len(identifiers))
+        
+        for i, identifier in enumerate(identifiers):
+            progress.update(task, description=f"Processing: {identifier[:30]}...")
+            
+            try:
+                success = process_single_molecule(identifier, config)
+                if success:
+                    successful_count += 1
+                else:
+                    failed_count += 1
+            except Exception as e:
+                failed_count += 1
+                if verbose:
+                    rich_print(f"[red]❌ Error processing {identifier}: {e}[/red]")
+            
+            progress.update(task, advance=1)
+    
+    # Display final results
+    results_table = Table(title="Batch Processing Results")
+    results_table.add_column("Metric", style="bold")
+    results_table.add_column("Count", justify="right")
+    results_table.add_column("Percentage", justify="right")
+    
+    total = len(identifiers)
+    success_pct = (successful_count / total) * 100 if total > 0 else 0
+    failed_pct = (failed_count / total) * 100 if total > 0 else 0
+    
+    results_table.add_row("Total Molecules", str(total), "100.0%")
+    results_table.add_row("Successfully Processed", str(successful_count), f"{success_pct:.1f}%", style="green")
+    results_table.add_row("Failed", str(failed_count), f"{failed_pct:.1f}%", style="red")
+    
+    console.print(results_table)
+    
+    if successful_count > 0:
+        rich_print(f"[green]🎉 Batch processing completed! {successful_count} molecules processed successfully.[/green]")
+    
+    if failed_count > 0:
+        rich_print(f"[yellow]⚠️  {failed_count} molecules failed processing. Check logs for details.[/yellow]")
+    
+    return {
+        "total": total,
+        "successful": successful_count,
+        "failed": failed_count,
+        "success_percentage": success_pct
+    }
 
 
 def _execute_info_logic(config_file: str) -> bool:
@@ -257,9 +307,6 @@ def _execute_info_logic(config_file: str) -> bool:
     if config:
         console.print("[green]✅ Configuração carregada com sucesso[/green]")
         
-        # Setup logging with the loaded configuration
-        setup_logging(config)
-        
         # Validate executables
         from grimperium.utils.config_manager import validate_executables
         if validate_executables(config):
@@ -317,9 +364,6 @@ def _execute_report_logic(config_file: str, detailed: bool = False, missing: int
     if not config:
         rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return False
-    
-    # Setup logging with the loaded configuration
-    setup_logging(config)
     
     # Get database paths from configuration
     cbs_db_path = config['database']['cbs_db_path']
@@ -538,6 +582,10 @@ def run_single(
 
 @app.command()
 def run_batch(
+    file: str = typer.Argument(
+        ...,
+        help="Path to text file containing molecule identifiers (one per line)"
+    ),
     config_file: str = typer.Option(
         "config.yaml",
         "--config",
@@ -552,21 +600,17 @@ def run_batch(
     )
 ) -> None:
     """
-    Start the interactive batch processing workflow.
+    Process multiple molecules from a file through the computational chemistry pipeline.
     
-    This command launches an interactive, guided interface for creating and
-    validating molecule lists before batch processing. The workflow includes
-    list creation/editing, validation against database and PubChem, and
-    automated batch processing.
+    This command reads molecule identifiers from a text file (one per line) and
+    processes each through the complete Grimperium workflow. Progress is displayed
+    with a progress bar.
     """
-    # Call the business logic function with dummy file parameter
-    result = _execute_batch_logic("", config_file, verbose)
+    # Call the business logic function
+    result = _execute_batch_logic(file, config_file, verbose)
     
     if "error" in result:
         raise typer.Exit(1)
-    elif result.get("cancelled"):
-        rich_print("[yellow]⚠️  Operação cancelada pelo usuário[/yellow]")
-        raise typer.Exit(0)
 
 
 @app.command()
@@ -815,18 +859,28 @@ def handle_batch_molecules():
     """
     Handle batch molecule processing through interactive prompts.
     """
-    try:
-        result = _execute_batch_logic(
-            file_path="",  # Not used in interactive mode
-            config_file='config.yaml',
-            verbose=False
-        )
-        if "error" in result:
-            rich_print(f"[red]❌ Erro no processamento do lote: {result['error']}[/red]")
-        elif result.get("cancelled"):
-            rich_print("[yellow]ℹ️  Operação cancelada[/yellow]")
-    except Exception as e:
-        rich_print(f"[red]❌ Erro no processamento do lote: {e}[/red]")
+    console.print(Panel.fit(
+        "[bold green]📁 Processar Lote de Moléculas[/bold green]",
+        border_style="green"
+    ))
+    
+    # Ask for file path
+    file_path = questionary.path(
+        "Selecione o arquivo com as moléculas (um identificador por linha):",
+        validate=lambda path: Path(path).exists() or "Arquivo não encontrado"
+    ).ask()
+    
+    if file_path:
+        try:
+            result = _execute_batch_logic(
+                file_path=file_path,
+                config_file='config.yaml',
+                verbose=False
+            )
+            if "error" in result:
+                rich_print(f"[red]❌ Erro no processamento do lote: {result['error']}[/red]")
+        except Exception as e:
+            rich_print(f"[red]❌ Erro no processamento do lote: {e}[/red]")
     
     # Pause before returning to menu
     questionary.press_any_key_to_continue("Pressione qualquer tecla para continuar...").ask()
