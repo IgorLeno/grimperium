@@ -9,6 +9,7 @@ repository_base_path: 'repository'
 
 general_settings:
   verbose: false
+  lists_directory: 'data/lists'
 
 logging:
   log_file: 'logs/grim_details.log'

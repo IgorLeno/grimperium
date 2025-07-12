@@ -1,2 +1,7 @@
 smiles,identifier,sdf_path,xyz_path,crest_best_xyz_path,pm7_energy,charge,multiplicity
 OCC,ethanol,/home/igor/Projetos/grimperium/repository/ethanol/ethanol.sdf,/home/igor/Projetos/grimperium/repository/ethanol/ethanol.xyz,/home/igor/Projetos/grimperium/repository/ethanol/crest_output/crest_best.xyz,-57.85803,0,1
+OC,methanol,/home/igor/Projetos/grimperium/repository/methanol/methanol.sdf,/home/igor/Projetos/grimperium/repository/methanol/methanol.xyz,/home/igor/Projetos/grimperium/repository/methanol/crest_output/crest_best.xyz,-48.9384,0,1
+OCCC,propanol,/home/igor/Projetos/grimperium/repository/propanol/propanol.sdf,/home/igor/Projetos/grimperium/repository/propanol/propanol.xyz,/home/igor/Projetos/grimperium/repository/propanol/crest_output/crest_best.xyz,-62.73536,0,1
+OCCCC,butanol,/home/igor/Projetos/grimperium/repository/butanol/butanol.sdf,/home/igor/Projetos/grimperium/repository/butanol/butanol.xyz,/home/igor/Projetos/grimperium/repository/butanol/crest_output/crest_best.xyz,-67.53047,0,1
+OC(=O)CCC,butyric acid,/home/igor/Projetos/grimperium/repository/butyric_acid/butyric_acid.sdf,/home/igor/Projetos/grimperium/repository/butyric_acid/butyric_acid.xyz,/home/igor/Projetos/grimperium/repository/butyric_acid/crest_output/crest_best.xyz,-111.97568,0,1
+OCCCCC,pentanol,/home/igor/Projetos/grimperium/repository/pentanol/pentanol.sdf,/home/igor/Projetos/grimperium/repository/pentanol/pentanol.xyz,/home/igor/Projetos/grimperium/repository/pentanol/crest_output/crest_best.xyz,-72.60974,0,1

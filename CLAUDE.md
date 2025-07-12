@@ -1,5 +1,12 @@
 # CLAUDE.md - Grimperium v2 Context
 
+> **Notice: Multi-Agent Context Separation**
+
+> This file (`CLAUDE.md`) is intended exclusively for Claude Code agent sessions across all projects.
+> - Do **not** use or reference this file in AMP (ampcode) agent sessions.
+> - For AMP context and memory, always use `AGENT.md` (or the agent-specific context file) in the project directory.
+> Keeping agent context files strictly separated avoids confusion and ensures each agent operates with the correct instructions and memory.  
+
 ## Project Overview
 
 **Grimperium v2** is a command-line interface tool for computational chemistry workflow automation. It orchestrates the integration between PubChem, CREST, and MOPAC to automate the generation of molecular thermodynamic data.
@@ -308,3 +315,13 @@ python main.py report
 ```
 
 This context should provide sufficient information for any new Claude session to understand the project structure, purpose, and development patterns.
+
+## Agent Context Separation
+
+| File      | Used By      | Purpose                        | Must Not Be Used By         |
+|-----------|--------------|--------------------------------|-----------------------------|
+| CLAUDE.md | Claude Code  | Global memory & instructions   | AMP (ampcode)               |
+| AGENT.md  | AMP/ampcode  | Project memory & instructions  | Claude Code                 |
+
+- Never copy, merge, or reference content between these files unless strictly necessary.
+- Document this separation in each agent’s context file and in your main project README if collaborating.

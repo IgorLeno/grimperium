@@ -114,6 +114,19 @@ def _resolve_config_paths(config: Dict[str, Any], project_root: Path) -> Dict[st
         resolved_config['repository_base_path'] = str(repo_path.absolute())
         logger.debug(f"Resolved repository_base_path: {resolved_config['repository_base_path']}")
     
+    # Resolve general settings paths
+    if 'general_settings' in resolved_config:
+        general_settings = resolved_config['general_settings'].copy()
+        
+        if 'lists_directory' in general_settings:
+            lists_path = Path(general_settings['lists_directory'])
+            if not lists_path.is_absolute():
+                lists_path = project_root / lists_path
+            general_settings['lists_directory'] = str(lists_path.absolute())
+            logger.debug(f"Resolved lists_directory: {general_settings['lists_directory']}")
+        
+        resolved_config['general_settings'] = general_settings
+    
     # Resolve database paths
     if 'database' in resolved_config:
         db_config = resolved_config['database'].copy()
@@ -149,6 +162,19 @@ def _create_required_directories(config: Dict[str, Any]) -> bool:
             repo_path = Path(config['repository_base_path'])
             repo_path.mkdir(parents=True, exist_ok=True)
             logger.debug(f"Created repository directory: {repo_path}")
+        
+        # Create lists directory
+        if 'general_settings' in config and 'lists_directory' in config['general_settings']:
+            lists_path = Path(config['general_settings']['lists_directory'])
+            lists_path.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Created lists directory: {lists_path}")
+        
+        # Create not-found directory
+        if 'repository_base_path' in config:
+            repo_path = Path(config['repository_base_path'])
+            not_found_path = repo_path / "not-found"
+            not_found_path.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Created not-found directory: {not_found_path}")
         
         # Create database directories
         if 'database' in config:

@@ -40,7 +40,8 @@ DEFAULT_CONFIG = {
     'mopac_keywords': 'PM7 PRECISE XYZ',
     'repository_base_path': 'repository',
     'general_settings': {
-        'verbose': False
+        'verbose': False,
+        'lists_directory': 'data/lists'
     },
     'database': {
         'cbs_db_path': 'data/thermo_cbs.csv',
@@ -79,7 +80,7 @@ CONFIG_VALIDATION_RULES = {
     'general_settings': {
         'type': dict,
         'required': True,
-        'keys': ['verbose']
+        'keys': ['verbose', 'lists_directory']
     },
     'crest_keywords': {
         'type': str,
@@ -169,5 +170,10 @@ def validate_config_structure(config: Dict[str, Any]) -> List[str]:
                 errors.append("Missing required general_settings key: verbose")
             elif not isinstance(config['general_settings']['verbose'], bool):
                 errors.append("'general_settings.verbose' must be a boolean")
+            
+            if 'lists_directory' not in config['general_settings']:
+                errors.append("Missing required general_settings key: lists_directory")
+            elif not isinstance(config['general_settings']['lists_directory'], str):
+                errors.append("'general_settings.lists_directory' must be a string")
     
     return errors

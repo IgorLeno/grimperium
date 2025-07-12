@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Instalar Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: 3.9
+          environment-file: environment.yml
+          activate-environment: grimperium
+
+      - name: Instalar dependências extras via pip
+        run: |
+          pip install typer rich questionary pandas pyyaml requests pubchempy filelock pydantic pytest pytest-cov
+
+      - name: Rodar testes unitários com cobertura
+        run: |
+          if [ -d "grimperium/tests" ]; then
+            pytest --cov=grimperium --cov-report=xml grimperium/tests
+          else
+            echo "Sem testes automatizados encontrados."
+          fi
+
+      - name: Enviar cobertura para Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
