@@ -143,6 +143,8 @@ Para desenvolvedores: consulte o arquivo `CLAUDE.md` para contexto detalhado sob
 
 O sistema gera logs detalhados em `logs/grim_details.log`. Use o comando `info` para diagnóstico do sistema e verificação de dependências.
 
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/IgorLeno/grimperium?utm_source=oss&utm_medium=github&utm_campaign=IgorLeno%2Fgrimperium&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 ## Licença
 
 Este projeto é desenvolvido para uso acadêmico e de pesquisa em química computacional.
