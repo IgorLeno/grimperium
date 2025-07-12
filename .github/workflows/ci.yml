@@ -14,17 +14,14 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Instalar Miniconda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          python-version: 3.9
-          environment-file: environment.yml
-          activate-environment: grimperium
+      - name: Dar permissão de execução ao script
+        run: chmod +x setup_environment.sh
 
-      - name: Instalar dependências extras via pip
-        run: |
-          pip install typer rich questionary pandas pyyaml requests pubchempy filelock pydantic pytest pytest-cov
+      - name: Executar o script de setup do ambiente
+        run: ./setup_environment.sh
+
+      - name: Instalar pytest e pytest-cov
+        run: pip install pytest pytest-cov
 
       - name: Rodar testes unitários com cobertura
         run: |
