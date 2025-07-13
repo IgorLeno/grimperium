@@ -19,11 +19,12 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
-      id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      contents: write           # Permite leitura e escrita nos arquivos do repositório
+      pull-requests: write      # Permite comentar e sugerir alterações em PRs
+      issues: write             # Permite comentar e interagir em issues
+      id-token: write           # Necessário para autenticação segura
+      actions: read             # Essencial para Claude ler resultados do GitHub Actions
+      security-events: read     # (Opcional) Permite ler alertas de segurança e CodeQL, se desejar análise de segurança
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,29 +37,19 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
+          # Permite que Claude leia resultados do CI e ajude a depurar falhas
           additional_permissions: |
             actions: read
-          
-          # Optional: Specify model (defaults to Claude Sonnet 4, uncomment for Claude Opus 4)
+            security-events: read
+
+          # Outras opções personalizáveis (descomentando conforme necessidade)
           # model: "claude-opus-4-20250514"
-          
-          # Optional: Customize the trigger phrase (default: @claude)
           # trigger_phrase: "/claude"
-          
-          # Optional: Trigger when specific user is assigned to an issue
           # assignee_trigger: "claude-bot"
-          
-          # Optional: Allow Claude to run specific commands
           # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
-          
-          # Optional: Add custom instructions for Claude to customize its behavior for your project
           # custom_instructions: |
-          #   Follow our coding standards
-          #   Ensure all new code has tests
-          #   Use TypeScript for new files
-          
-          # Optional: Custom environment variables for Claude
+          #   Siga nossos padrões de código
+          #   Exija testes para todo novo código
+          #   Use TypeScript para novos arquivos
           # claude_env: |
           #   NODE_ENV: test
-
