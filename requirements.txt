@@ -9,3 +9,4 @@ pytest
 pytest-cov
 filelock
 pubchempy
+pytest-mock
