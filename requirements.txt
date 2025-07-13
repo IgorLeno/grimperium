@@ -1,0 +1,11 @@
+pandas
+typer
+rich
+pydantic
+pyyaml
+requests
+questionary
+pytest
+pytest-cov
+filelock
+pubchempy
