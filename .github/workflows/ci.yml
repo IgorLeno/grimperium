@@ -23,17 +23,12 @@ jobs:
       - name: Criar ambiente Conda e instalar dependências
         run: |
           conda create -n grimperium python=3.9 -y
-          source ~/.bashrc
-          conda activate grimperium
-          pip install pandas typer rich pydantic pyyaml requests questionary pytest pytest-cov
-          # Instale outras dependências necessárias aqui
+          conda run -n grimperium pip install -r requirements.txt
 
       - name: Rodar testes unitários com cobertura
         run: |
-          source ~/.bashrc
-          conda activate grimperium
           if [ -d "grimperium/tests" ]; then
-            pytest --cov=grimperium --cov-report=xml grimperium/tests
+            conda run -n grimperium pytest --cov=grimperium --cov-report=xml grimperium/tests
           else
             echo "Sem testes automatizados encontrados."
           fi
