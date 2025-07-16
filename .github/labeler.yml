@@ -1,0 +1,16 @@
+# .github/labeler.yml
+"bot: claude-code":
+  - "grimperium/services/**/*.py"
+  - "grimperium/core/**/*.py"
+
+"bot: gemini-docs":
+  - "docs/**/*"
+  - "README.md"
+  - "*.md"
+
+"coverage: check":
+  - "grimperium/tests/**/*.py"
+  - "grimperium/**/*.py"
+
+"review: coderabbit":
+  - "**/*.py"

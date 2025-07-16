@@ -1,0 +1,23 @@
+# .github/workflows/gemini-docs.yml
+name: Gemini Documentation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+jobs:
+  gemini-docs:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini')) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'documentation'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate Documentation
+        run: |
+          echo "Gemini: Análise de contexto e documentação"
+          # Aqui você pode adicionar scripts para gerar documentação

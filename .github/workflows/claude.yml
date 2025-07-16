@@ -1,3 +1,4 @@
+# .github/workflows/claude.yml (melhorado)
 name: Claude Code
 
 on:
@@ -6,50 +7,38 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
-    types: [opened, assigned]
-  pull_request_review:
-    types: [submitted]
+    types: [opened, assigned, labeled]
+  pull_request:
+    types: [opened, synchronize]
 
 jobs:
   claude:
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-code')) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'claude-review'))
     runs-on: ubuntu-latest
     permissions:
-      contents: write           # Permite leitura e escrita nos arquivos do repositório
-      pull-requests: write      # Permite comentar e sugerir alterações em PRs
-      issues: write             # Permite comentar e interagir em issues
-      id-token: write           # Necessário para autenticação segura
-      actions: read             # Essencial para Claude ler resultados do GitHub Actions
-      security-events: read     # (Opcional) Permite ler alertas de segurança e CodeQL, se desejar análise de segurança
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-
+          fetch-depth: 0
+      
       - name: Run Claude Code
-        id: claude
         uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # Permite que Claude leia resultados do CI e ajude a depurar falhas
-          additional_permissions: |
-            actions: read
-            security-events: read
-
-          # Outras opções personalizáveis (descomentando conforme necessidade)
-          # model: "claude-opus-4-20250514"
-          # trigger_phrase: "/claude"
-          # assignee_trigger: "claude-bot"
-          # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
-          # custom_instructions: |
-          #   Siga nossos padrões de código
-          #   Exija testes para todo novo código
-          #   Use TypeScript para novos arquivos
-          # claude_env: |
-          #   NODE_ENV: test
+          custom_instructions: |
+            Você é o agente principal de codificação. Foque em:
+            - Implementar código Python seguindo PEP 8
+            - Usar Pydantic para validação de dados
+            - Implementar testes com pytest
+            - Documentar com docstrings
+            - Seguir a arquitetura service-oriented do projeto
