@@ -1,0 +1,47 @@
+# .coderabbit.yaml
+language: "pt-BR"
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_empty_files: true
+  auto_review:
+    enabled: true
+    drafts: false
+
+chat:
+  auto_reply: true
+
+changed_files_summary:
+  enabled: true
+
+path_instructions:
+  - path: "grimperium/services/**/*.py"
+    instructions: |
+      Foque em:
+      - Padrões de service-oriented architecture
+      - Tratamento de erros adequado
+      - Logging estruturado
+      - Validação de dados com Pydantic
+  
+  - path: "grimperium/tests/**/*.py"
+    instructions: |
+      Verifique:
+      - Cobertura de testes adequada
+      - Mocks apropriados para dependências externas
+      - Casos de teste edge cases
+      - Estrutura de testes clara
+
+  - path: "**/*.py"
+    instructions: |
+      Analise:
+      - Conformidade com PEP 8
+      - Documentação com docstrings
+      - Type hints quando apropriado
+      - Performance e segurança
+
+ignore_draft_pr: true
+auto_title_update: false
