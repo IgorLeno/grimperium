@@ -28,7 +28,8 @@ def convert_file(input_path: str, output_format: str) -> Optional[str]:
         output_format: Target file format (e.g., 'xyz', 'sdf', 'mol2', 'pdb')
 
     Returns:
-        The full path to the converted output file if successful, None otherwise
+        The full path to the converted output file if successful,
+        None otherwise
 
     Example:
         >>> convert_file("repository/sdf/ethanol.sdf", "xyz")
@@ -70,7 +71,7 @@ def convert_file(input_path: str, output_format: str) -> Optional[str]:
         # Check if conversion was successful
         if result.returncode != 0:
             logger.error(
-                f"OpenBabel conversion failed with return code {result.returncode}"
+                f"OpenBabel conversion failed with return code " f"{result.returncode}"
             )
             if result.stderr:
                 logger.error(f"OpenBabel stderr: {result.stderr.strip()}")
@@ -100,7 +101,8 @@ def convert_file(input_path: str, output_format: str) -> Optional[str]:
 
     except FileNotFoundError:
         logger.error(
-            "OpenBabel (obabel) not found. Please ensure OpenBabel is installed "
+            "OpenBabel (obabel) not found. Please ensure OpenBabel is "
+            "installed "
             "and available in your PATH."
         )
         return None

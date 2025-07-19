@@ -163,7 +163,8 @@ def update_database_entry(
                     if existing_mask.any():
                         # Update existing entry
                         logger.info(
-                            f"Updating existing entry with SMILES '{smiles}' in database"
+                            f"Updating existing entry with SMILES '{smiles}' "
+                            f"in database"
                         )
                         for col in schema:
                             if col in molecule_data:
@@ -171,7 +172,7 @@ def update_database_entry(
                     else:
                         # Add new entry
                         logger.info(
-                            f"Adding new entry with SMILES '{smiles}' to database"
+                            f"Adding new entry with SMILES '{smiles}' " f"to database"
                         )
                         row_data = {}
                         for col in schema:
@@ -246,7 +247,9 @@ def append_to_database(
         ...     'charge': 0,
         ...     'multiplicity': 1
         ... }
-        >>> schema = ['smiles', 'identifier', 'pm7_energy', 'charge', 'multiplicity']
+        >>> schema = [
+        ...     'smiles', 'identifier', 'pm7_energy', 'charge', 'multiplicity'
+        ... ]
         >>> append_to_database(data, "data/thermo_pm7.csv", schema)
         True
     """
@@ -301,12 +304,14 @@ def append_to_database(
 
                     if smiles in existing_smiles:
                         logger.warning(
-                            f"SMILES '{smiles}' already exists in database, skipping"
+                            f"SMILES '{smiles}' already exists in database, "
+                            f"skipping"
                         )
                         return False
 
                     # Prepare data for append
-                    # Ensure all schema columns are present, fill missing with None
+                    # Ensure all schema columns are present,
+                    # fill missing with None
                     row_data = {}
                     for col in schema:
                         row_data[col] = molecule_data.get(col, None)
@@ -316,7 +321,7 @@ def append_to_database(
 
                     # Append to existing file
                     logger.info(
-                        f"Appending new entry with SMILES '{smiles}' to database"
+                        f"Appending new entry with SMILES '{smiles}' " f"to database"
                     )
                     new_row_df.to_csv(
                         db_path,
@@ -380,7 +385,7 @@ def validate_database_schema(db_path: str, expected_schema: List[str]) -> bool:
         db_file = Path(db_path)
         if not db_file.exists():
             logger.debug(
-                f"Database file does not exist, schema validation passed: {db_path}"
+                f"Database file does not exist, schema validation " f"passed: {db_path}"
             )
             return True
 
@@ -443,7 +448,7 @@ def get_database_stats(db_path: str) -> Dict[str, any]:
         stats = {
             "exists": True,
             "total_entries": len(df),
-            "unique_smiles": df["smiles"].nunique() if "smiles" in df.columns else 0,
+            "unique_smiles": (df["smiles"].nunique() if "smiles" in df.columns else 0),
             "file_size_bytes": file_size,
             "columns": list(df.columns),
         }

@@ -7,7 +7,6 @@ Refactored version with smaller, focused functions.
 """
 
 import logging
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -16,10 +15,9 @@ import yaml
 
 from ..constants import (
     EXECUTABLE_VALIDATION_TIMEOUT,
-    BYTES_PER_MB,
     REQUIRED_EXECUTABLES,
 )
-from ..config.defaults import get_database_schema, validate_config_structure
+from ..config.defaults import validate_config_structure
 
 
 def _load_yaml_config(config_path: str) -> Optional[Dict[str, Any]]:
@@ -110,7 +108,8 @@ def _resolve_config_paths(config: Dict[str, Any], project_root: Path) -> Dict[st
             repo_path = project_root / repo_path
         resolved_config["repository_base_path"] = str(repo_path.absolute())
         logger.debug(
-            f"Resolved repository_base_path: {resolved_config['repository_base_path']}"
+            f"Resolved repository_base_path: "
+            f"{resolved_config['repository_base_path']}"
         )
 
     # Resolve general settings paths
@@ -123,7 +122,7 @@ def _resolve_config_paths(config: Dict[str, Any], project_root: Path) -> Dict[st
                 lists_path = project_root / lists_path
             general_settings["lists_directory"] = str(lists_path.absolute())
             logger.debug(
-                f"Resolved lists_directory: {general_settings['lists_directory']}"
+                f"Resolved lists_directory: " f"{general_settings['lists_directory']}"
             )
 
         resolved_config["general_settings"] = general_settings
@@ -198,7 +197,8 @@ def _create_required_directories(config: Dict[str, Any]) -> bool:
 
 def load_config(config_path: str, project_root: Path) -> Optional[Dict[str, Any]]:
     """
-    Load configuration from a YAML file and resolve relative paths to absolute paths.
+    Load configuration from a YAML file and resolve relative paths to
+    absolute paths.
 
     This function orchestrates the complete configuration loading process:
     1. Load and parse YAML file
@@ -211,7 +211,8 @@ def load_config(config_path: str, project_root: Path) -> Optional[Dict[str, Any]
         project_root: Path object representing the project root directory
 
     Returns:
-        Dictionary containing configuration settings with resolved absolute paths,
+        Dictionary containing configuration settings with resolved
+        absolute paths,
         None if loading fails
 
     Example:
@@ -279,7 +280,8 @@ def _validate_single_executable(name: str, executable: str) -> bool:
             return True
         else:
             logger.error(
-                f"Executable '{name}' validation failed (return code: {result.returncode})"
+                f"Executable '{name}' validation failed "
+                f"(return code: {result.returncode})"
             )
             if result.stderr:
                 logger.debug(f"Error output: {result.stderr.decode().strip()}")
@@ -352,7 +354,8 @@ def setup_logging(config: Dict[str, Any]) -> None:
     - Always show WARNING+ messages on console
 
     Args:
-        config: Configuration dictionary containing logging and general settings
+        config: Configuration dictionary containing logging and
+               general settings
     """
     # Get logging configuration
     logging_config = config.get("logging", {})

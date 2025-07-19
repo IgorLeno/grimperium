@@ -6,27 +6,22 @@ from YAML files, ensuring all required settings are present and valid.
 """
 
 import logging
-import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
 
-from ..constants import (
-    EXECUTABLE_VALIDATION_TIMEOUT,
-    BYTES_PER_MB,
-    REQUIRED_EXECUTABLES,
-)
-from ..config.defaults import get_database_schema, validate_config_structure
+from ..constants import EXECUTABLE_VALIDATION_TIMEOUT
 
 
 def load_config(config_path: str, project_root: Path) -> Optional[Dict[str, Any]]:
     """
-    Load configuration from a YAML file and resolve relative paths to absolute paths.
+    Load configuration from a YAML file and resolve relative paths to
+    absolute paths.
 
     This function loads the Grimperium configuration from a YAML file,
-    validates required sections, and converts relative paths to absolute paths
+    validates required sections, and converts relative paths to absolute
+    paths
     based on the project root directory.
 
     Args:
@@ -34,7 +29,8 @@ def load_config(config_path: str, project_root: Path) -> Optional[Dict[str, Any]
         project_root: Path object representing the project root directory
 
     Returns:
-        Dictionary containing configuration settings with resolved absolute paths,
+        Dictionary containing configuration settings with resolved absolute
+        paths,
         None if loading fails
 
     Example:
@@ -127,7 +123,7 @@ def load_config(config_path: str, project_root: Path) -> Optional[Dict[str, Any]
             absolute_path = project_root / relative_path
             config["repository_base_path"] = str(absolute_path)
             logger.debug(
-                f"Resolved repository_base_path: {relative_path} -> {absolute_path}"
+                f"Resolved repository_base_path: " f"{relative_path} -> {absolute_path}"
             )
 
         # Ensure required directories exist
@@ -215,26 +211,26 @@ def validate_executables(config: Dict[str, Any]) -> bool:
             try:
                 # Try to run the executable with a help or version flag
                 if name == "crest":
-                    result = subprocess.run(
+                    subprocess.run(
                         [executable, "--help"],
                         capture_output=True,
                         timeout=EXECUTABLE_VALIDATION_TIMEOUT,
                     )
                 elif name == "mopac":
-                    result = subprocess.run(
+                    subprocess.run(
                         [executable],
                         capture_output=True,
                         timeout=EXECUTABLE_VALIDATION_TIMEOUT,
                     )
                 elif name == "obabel":
-                    result = subprocess.run(
+                    subprocess.run(
                         [executable, "--help"],
                         capture_output=True,
                         timeout=EXECUTABLE_VALIDATION_TIMEOUT,
                     )
                 else:
                     # Generic executable check
-                    result = subprocess.run(
+                    subprocess.run(
                         [executable, "--help"],
                         capture_output=True,
                         timeout=EXECUTABLE_VALIDATION_TIMEOUT,
@@ -247,7 +243,7 @@ def validate_executables(config: Dict[str, Any]) -> bool:
                 return False
             except subprocess.TimeoutExpired:
                 logger.warning(
-                    f"Executable '{name}' timed out, but appears to be available"
+                    f"Executable '{name}' timed out, " f"but appears to be available"
                 )
             except Exception as e:
                 logger.warning(f"Could not verify executable '{name}': {e}")

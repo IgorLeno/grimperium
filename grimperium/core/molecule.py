@@ -1,8 +1,10 @@
 """
 Core domain model for molecular representation in Grimperium.
 
-This module defines the Molecule class, which serves as the central data structure
-for representing chemical compounds throughout the computational chemistry pipeline.
+This module defines the Molecule class, which serves as the central data
+structure
+for representing chemical compounds throughout the computational chemistry
+pipeline.
 The molecule object tracks all relevant paths, properties, and computed values
 as they are generated during the workflow.
 """
@@ -15,11 +17,15 @@ class Molecule(BaseModel):
     """
     Core domain model representing a chemical molecule and its associated data.
 
-    This class serves as the central data structure for the Grimperium computational
-    chemistry pipeline. It tracks the molecule's identity, file paths for various
-    formats, and computed properties as they are generated throughout the workflow.
+    This class serves as the central data structure for the Grimperium
+    computational
+    chemistry pipeline. It tracks the molecule's identity, file paths for
+    various
+    formats, and computed properties as they are generated throughout the
+    workflow.
 
-    The class uses Pydantic for robust data validation and serialization, ensuring
+    The class uses Pydantic for robust data validation and serialization,
+    ensuring
     type safety and data integrity throughout the pipeline operations.
 
     Attributes:
@@ -27,7 +33,8 @@ class Molecule(BaseModel):
         smiles: Canonical SMILES representation of the molecule
         sdf_path: Path to the SDF structure file
         xyz_path: Path to the XYZ coordinate file
-        crest_best_xyz_path: Path to the best conformer from CREST optimization
+        crest_best_xyz_path: Path to the best conformer from CREST
+            optimization
         pm7_energy: Computed PM7 energy value in kcal/mol
         charge: Molecular charge (default: 0)
         multiplicity: Spin multiplicity (default: 1 for singlet)
@@ -35,7 +42,7 @@ class Molecule(BaseModel):
 
     identifier: str = Field(
         ...,
-        description="Initial molecule identifier (name, SMILES, or other identifier)",
+        description=("Initial molecule identifier (name, SMILES, or other identifier)"),
     )
 
     smiles: Optional[str] = Field(
@@ -51,7 +58,8 @@ class Molecule(BaseModel):
     )
 
     crest_best_xyz_path: Optional[str] = Field(
-        None, description="Path to the best conformer XYZ file from CREST optimization"
+        None,
+        description=("Path to the best conformer XYZ file from CREST optimization"),
     )
 
     pm7_energy: Optional[float] = Field(
@@ -59,7 +67,8 @@ class Molecule(BaseModel):
     )
 
     charge: Optional[int] = Field(
-        0, description="Molecular charge (default: 0 for neutral molecules)"
+        0,
+        description="Molecular charge (default: 0 for neutral molecules)",
     )
 
     multiplicity: Optional[int] = Field(
@@ -74,7 +83,7 @@ class Molecule(BaseModel):
 
     def __str__(self) -> str:
         """Return a human-readable string representation of the molecule."""
-        return f"Molecule(identifier='{self.identifier}', smiles='{self.smiles}')"
+        return f"Molecule(identifier='{self.identifier}', " f"smiles='{self.smiles}')"
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging."""

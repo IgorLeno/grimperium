@@ -1,5 +1,6 @@
 """
-Pipeline orchestration service for Grimperium computational chemistry workflows.
+Pipeline orchestration service for Grimperium computational chemistry
+workflows.
 
 This module coordinates the execution of the complete computational chemistry
 pipeline, managing the flow of data between different services and ensuring
@@ -74,9 +75,6 @@ def extract_smiles_from_sdf(sdf_path: str) -> Optional[str]:
         if not sdf_file.exists():
             logger.error(f"SDF file not found: {sdf_path}")
             return None
-
-        # Create temporary SMILES file
-        smiles_path = sdf_file.with_suffix(".smi")
 
         # Convert SDF to SMILES
         smiles_file = conversion_service.convert_file(sdf_path, "smi")
@@ -189,7 +187,7 @@ def _prepare_molecule_data(
     smiles = extract_smiles_from_sdf(sdf_path)
     if not smiles:
         logger.warning(
-            f"Could not extract SMILES from SDF, using identifier: {identifier}"
+            f"Could not extract SMILES from SDF, using identifier: " f"{identifier}"
         )
         smiles = identifier
 
@@ -220,7 +218,8 @@ def _prepare_molecule_data_with_smiles(
     smiles: str,
 ) -> Dict[str, Any]:
     """
-    Prepare molecule data dictionary for database storage with pre-extracted SMILES.
+    Prepare molecule data dictionary for database storage with
+    pre-extracted SMILES.
 
     Args:
         identifier: Molecule identifier
@@ -286,7 +285,9 @@ def _save_to_database(molecule_data: Dict[str, Any], config: Dict[str, Any]) -> 
 
 
 def _save_to_database_with_overwrite(
-    molecule_data: Dict[str, Any], config: Dict[str, Any], overwrite: bool = False
+    molecule_data: Dict[str, Any],
+    config: Dict[str, Any],
+    overwrite: bool = False,
 ) -> bool:
     """
     Save molecule data to the database with overwrite option.
@@ -329,9 +330,11 @@ def _save_to_database_with_overwrite(
 
 def get_molecule_smiles(identifier: str, config: Dict[str, Any]) -> Optional[str]:
     """
-    Get SMILES string for a molecule by downloading and extracting from PubChem.
+    Get SMILES string for a molecule by downloading and extracting from
+    PubChem.
 
-    This function handles the initial steps of the pipeline without the heavy calculations:
+    This function handles the initial steps of the pipeline without the
+    heavy calculations:
     1. Download structure from PubChem
     2. Extract SMILES from the structure
 
@@ -360,7 +363,7 @@ def get_molecule_smiles(identifier: str, config: Dict[str, Any]) -> Optional[str
         smiles = extract_smiles_from_sdf(sdf_path)
         if not smiles:
             logger.warning(
-                f"Could not extract SMILES from SDF, using identifier: {identifier}"
+                f"Could not extract SMILES from SDF, using identifier: " f"{identifier}"
             )
             smiles = identifier
 
@@ -376,7 +379,8 @@ def process_single_molecule(
     identifier: str, config: Dict[str, Any], overwrite: bool = False
 ) -> bool:
     """
-    Process a single molecule through the complete computational chemistry pipeline.
+    Process a single molecule through the complete computational chemistry
+    pipeline.
 
     This function orchestrates the complete workflow for a single molecule:
     1. Download structure from PubChem (if not already done)
@@ -413,7 +417,7 @@ def process_single_molecule(
         smiles = extract_smiles_from_sdf(sdf_path)
         if not smiles:
             logger.warning(
-                f"Could not extract SMILES from SDF, using identifier: {identifier}"
+                f"Could not extract SMILES from SDF, using identifier: " f"{identifier}"
             )
             smiles = identifier
 
@@ -535,7 +539,8 @@ def process_molecule_batch(
             logger.error(f"Batch progress: {identifier} - ERROR: {e}")
 
     logger.info(
-        f"Batch processing completed. Success: {successful_count}, Failed: {failed_count}"
+        f"Batch processing completed. Success: {successful_count}, "
+        f"Failed: {failed_count}"
     )
 
     return successful_count, failed_count
@@ -555,11 +560,13 @@ def validate_pipeline_setup(config: Dict[str, Any]) -> bool:
 
     try:
         # Check if required directories exist or can be created
-        # Note: Directories are now created by config_manager.py with absolute paths
+        # Note: Directories are now created by config_manager.py with
+        # absolute paths
         repository_base = config.get("repository_base_path", "repository")
         logger.debug(f"Repository base path: {repository_base}")
 
-        # Validate that the repository directory exists (should be created by config_manager)
+        # Validate that the repository directory exists (should be created by
+        # config_manager)
         repository_path = Path(repository_base)
         if not repository_path.exists():
             repository_path.mkdir(parents=True, exist_ok=True)

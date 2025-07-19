@@ -15,7 +15,6 @@ from typing import Optional
 from ..constants import (
     CREST_TIMEOUT,
     MOPAC_TIMEOUT,
-    CONVERSION_TIMEOUT,
     ENERGY_EXTRACTION_PATTERN,
     EXECUTABLE_VALIDATION_TIMEOUT,
 )
@@ -97,7 +96,7 @@ def run_crest(
             logger.error(f"CREST best conformer file is empty: {best_xyz_path}")
             return None
 
-        logger.info(f"CREST calculation completed successfully")
+        logger.info("CREST calculation completed successfully")
         logger.info(f"Best conformer saved to: {best_xyz_path}")
 
         return str(best_xyz_path.absolute())
@@ -216,7 +215,7 @@ def run_mopac(input_file_path: str, mopac_keywords: str) -> Optional[str]:
             logger.error(f"MOPAC output file is empty: {output_file}")
             return None
 
-        logger.info(f"MOPAC calculation completed successfully")
+        logger.info("MOPAC calculation completed successfully")
         logger.info(f"Output saved to: {output_file}")
 
         return str(output_file.absolute())
@@ -329,7 +328,7 @@ def validate_mopac_installation() -> bool:
         True if MOPAC is available, False otherwise
     """
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["mopac"],
             capture_output=True,
             text=True,
