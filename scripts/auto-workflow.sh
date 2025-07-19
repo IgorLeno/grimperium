@@ -116,9 +116,19 @@ validate_command() {
 create_auto_branch() {
     local description="$1"
     
-    # Sanitizar descrição para nome de branch
+    # Sanitização robusta para nomes de branch (previne git command injection)
     local sanitized_desc
-    sanitized_desc=$(echo "$description" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+    sanitized_desc=$(echo "$description" | tr '[:upper:]' '[:lower:]' | \
+        sed -e 's/[^a-zA-Z0-9_-]/-/g' \
+            -e 's/--*/-/g' \
+            -e 's/^-\|-$//g' \
+            -e 's/^[0-9]*-*//' | \
+        cut -c1-50)  # Limitar comprimento
+    
+    # Verificar se a descrição não está vazia após sanitização
+    if [ -z "$sanitized_desc" ]; then
+        sanitized_desc="feature"
+    fi
     
     local timestamp
     timestamp=$(date +%Y-%m-%d-%H%M%S)
