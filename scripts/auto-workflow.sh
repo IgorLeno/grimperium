@@ -1,7 +1,7 @@
 #!/bin/bash
 # auto-workflow.sh - Sistema de automação local com GitHub Actions
 
-set -eo pipefail   # interrompe também em erros de pipeline
+set -eo pipefail
 
 # Configurações
 BRANCH_PREFIX="feature/auto"
@@ -80,7 +80,7 @@ validate_command() {
     done
     
     # Lista de comandos explicitamente permitidos
-    local allowed_commands=("git" "pip" "pip3" "pytest" "flake8" "black" "python" "python3" "autoflake" "isort" "mypy" "yamllint" "echo" "cat" "grep" "sed" "awk" "wc" "head" "tail")
+    local allowed_commands=("git" "gh" "jq" "curl" "rg" "fd" "pip" "pip3" "pytest" "flake8" "black" "python" "python3" "autoflake" "isort" "mypy" "yamllint" "echo" "cat" "grep" "sed" "awk" "wc" "head" "tail")
     local cmd_name
     cmd_name=$(echo "$cmd" | awk '{print $1}')
     
