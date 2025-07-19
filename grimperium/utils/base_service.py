@@ -2,12 +2,13 @@
 Base service class providing common functionality for all Grimperium services.
 
 This module provides a base class that encapsulates common patterns like
-logging setup, error handling, and validation that are used across all services.
+logging setup, error handling, and validation that are used across all
+services.
 """
 
 import logging
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
+from abc import ABC
+from typing import Any, Dict, Optional
 
 
 class BaseService(ABC):
