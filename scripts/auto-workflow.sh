@@ -217,6 +217,7 @@ create_pr_and_wait_instructions() {
     pr_url=$(gh pr create \
         --title "$title" \
         --body "$body" \
+        --label "claude-analyze" \
         --base main \
         --head "$branch_name")
     
