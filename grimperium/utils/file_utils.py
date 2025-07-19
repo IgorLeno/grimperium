@@ -6,14 +6,12 @@ used throughout the computational chemistry pipeline.
 """
 
 import logging
-import os
 import re
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Tuple
 
 from ..constants import (
     FILENAME_SANITIZATION_PATTERN,
-    MULTIPLE_UNDERSCORES_PATTERN,
     MAX_EXTENSION_LENGTH,
     SUPPORTED_FORMATS,
 )
@@ -116,7 +114,8 @@ def validate_file_exists(
         if file_size < min_size_bytes:
             return (
                 False,
-                f"File too small ({file_size} bytes, minimum {min_size_bytes}): {file_path}",
+                f"File too small ({file_size} bytes, minimum "
+                f"{min_size_bytes}): {file_path}",
             )
 
         if must_be_readable:
@@ -173,7 +172,8 @@ def validate_file_format(
 
     Args:
         file_path: Path to the file
-        expected_formats: List of expected formats (None to allow any supported format)
+        expected_formats: List of expected formats (None to allow any
+                         supported format)
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -192,7 +192,8 @@ def validate_file_format(
         if extension not in expected_clean:
             return (
                 False,
-                f"Unexpected file format '{extension}', expected one of: {expected_formats}",
+                f"Unexpected file format '{extension}', expected one of: "
+                f"{expected_formats}",
             )
     else:
         # Check against supported formats
@@ -200,7 +201,8 @@ def validate_file_format(
             supported = list(SUPPORTED_FORMATS.keys())
             return (
                 False,
-                f"Unsupported file format '{extension}', supported formats: {supported}",
+                f"Unsupported file format '{extension}', supported formats: "
+                f"{supported}",
             )
 
     return True, ""

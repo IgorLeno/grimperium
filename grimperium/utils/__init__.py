@@ -3,7 +3,7 @@ Utility modules for Grimperium.
 
 This package provides common utilities used throughout the application:
 - Base service classes
-- File operation utilities  
+- File operation utilities
 - Subprocess execution helpers
 - Configuration management
 """

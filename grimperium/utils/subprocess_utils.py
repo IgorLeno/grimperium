@@ -8,7 +8,7 @@ with consistent error handling, timeouts, and logging.
 import logging
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from ..constants import EXECUTABLE_VALIDATION_TIMEOUT
 
@@ -61,7 +61,10 @@ class SubprocessResult:
     def __str__(self) -> str:
         """String representation of the result."""
         status = "SUCCESS" if self.success else "FAILED"
-        return f"SubprocessResult({self.command_str}) -> {status} (code: {self.returncode})"
+        return (
+            f"SubprocessResult({self.command_str}) -> {status} "
+            f"(code: {self.returncode})"
+        )
 
 
 def execute_command(
@@ -116,7 +119,6 @@ def execute_command(
         logger.debug(f"Timeout: {timeout} seconds")
 
     start_time = time.time()
-    timeout_occurred = False
 
     try:
         # Execute the command
@@ -153,7 +155,6 @@ def execute_command(
 
     except subprocess.TimeoutExpired:
         execution_time = time.time() - start_time
-        timeout_occurred = True
 
         logger.error(f"Command timed out after {timeout} seconds")
 

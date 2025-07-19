@@ -83,7 +83,7 @@ def download_sdf_by_name(name: str, output_dir: str) -> Optional[str]:
         # Get the first compound (most relevant match)
         compound = compounds[0]
         logger.info(
-            f"Found compound: {compound.iupac_name or name} (CID: {compound.cid})"
+            f"Found compound: {compound.iupac_name or name} " f"(CID: {compound.cid})"
         )
 
         # Try to get 3D SDF data
@@ -91,7 +91,8 @@ def download_sdf_by_name(name: str, output_dir: str) -> Optional[str]:
             sdf_data = pcp.get_sdf(compound.cid, record_type="3d")
             if not sdf_data:
                 logger.warning(
-                    f"No 3D structure available for compound {name} (CID: {compound.cid})"
+                    f"No 3D structure available for compound {name} "
+                    f"(CID: {compound.cid})"
                 )
                 return None
         except Exception as e:

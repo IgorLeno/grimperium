@@ -7,20 +7,20 @@ with calculated results, generating comprehensive progress reports.
 """
 
 import logging
-from typing import Dict, Any, Optional, Set
+from typing import Dict, Any, Optional
 
 from .database_service import get_existing_smiles, get_database_stats
 from ..constants import (
     DEFAULT_TIME_PER_MOLECULE,
     SECONDS_PER_HOUR,
     TIME_DISPLAY_THRESHOLDS,
-    BYTES_PER_MB,
 )
 
 
 def generate_progress_report(cbs_db_path: str, pm7_db_path: str) -> Dict[str, Any]:
     """
-    Generate a comprehensive progress report comparing CBS reference and PM7 calculated databases.
+    Generate comprehensive progress report comparing CBS reference and PM7
+    calculated databases.
 
     This function analyzes the coverage of computational chemistry calculations
     by comparing the CBS reference database with the PM7 calculated database,
@@ -64,10 +64,10 @@ def generate_progress_report(cbs_db_path: str, pm7_db_path: str) -> Dict[str, An
         pm7_exists = Path(pm7_db_path).exists()
 
         logger.debug(
-            f"CBS database exists: {cbs_exists}, SMILES count: {len(cbs_smiles)}"
+            f"CBS database exists: {cbs_exists}, " f"SMILES count: {len(cbs_smiles)}"
         )
         logger.debug(
-            f"PM7 database exists: {pm7_exists}, SMILES count: {len(pm7_smiles)}"
+            f"PM7 database exists: {pm7_exists}, " f"SMILES count: {len(pm7_smiles)}"
         )
 
         # Calculate basic metrics
@@ -91,7 +91,7 @@ def generate_progress_report(cbs_db_path: str, pm7_db_path: str) -> Dict[str, An
             progress_percentage = 0.0
 
         # Log progress information
-        logger.info(f"Progress analysis complete:")
+        logger.info("Progress analysis complete:")
         logger.info(f"  CBS molecules: {total_cbs}")
         logger.info(f"  PM7 molecules: {total_pm7}")
         logger.info(f"  Common molecules: {common_count}")
@@ -202,7 +202,8 @@ def find_missing_molecules(
     cbs_db_path: str, pm7_db_path: str, limit: Optional[int] = None
 ) -> list[str]:
     """
-    Find molecules that are in the CBS database but missing from PM7 calculations.
+    Find molecules that are in the CBS database but missing from PM7
+    calculations.
 
     This function identifies which molecules from the reference database
     still need to be calculated, useful for planning future batch runs.
@@ -231,7 +232,8 @@ def find_missing_molecules(
             missing_list = missing_list[:limit]
 
         logger.info(
-            f"Found {len(missing_smiles)} missing molecules, returning {len(missing_list)}"
+            f"Found {len(missing_smiles)} missing molecules, "
+            f"returning {len(missing_list)}"
         )
         return missing_list
 
@@ -278,7 +280,9 @@ def calculate_completion_eta(
 
         # Create human-readable ETA
         if eta_hours < 1:
-            eta_human = f"{eta_hours * TIME_DISPLAY_THRESHOLDS['minutes']:.0f} minutes"
+            eta_human = (
+                f"{eta_hours * TIME_DISPLAY_THRESHOLDS['minutes']:.0f} " "minutes"
+            )
         elif eta_hours < (TIME_DISPLAY_THRESHOLDS["days"] / SECONDS_PER_HOUR):
             eta_human = f"{eta_hours:.1f} hours"
         elif eta_days < 7:
@@ -296,4 +300,9 @@ def calculate_completion_eta(
 
     except Exception as e:
         logger.error(f"Error calculating completion ETA: {e}")
-        return {"eta_hours": 0, "eta_days": 0, "eta_human": "Unknown", "error": str(e)}
+        return {
+            "eta_hours": 0,
+            "eta_days": 0,
+            "eta_human": "Unknown",
+            "error": str(e),
+        }

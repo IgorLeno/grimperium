@@ -8,7 +8,7 @@ and retry mechanisms throughout the application.
 import functools
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Dict, Optional, Type, Union
 
 from ..exceptions import GrimperiumError, format_error_context
 
@@ -52,7 +52,7 @@ class ErrorHandler:
         if isinstance(error, GrimperiumError):
             # Handle custom exceptions with rich context
             error_info = format_error_context(error)
-            message = f"Grimperium error"
+            message = "Grimperium error"
             if context:
                 message += f" in {context}"
             message += f": {error_info['message']}"
@@ -61,13 +61,13 @@ class ErrorHandler:
             self.logger.debug(f"Error details: {error_info}")
         else:
             # Handle standard exceptions
-            message = f"Unexpected error"
+            message = "Unexpected error"
             if context:
                 message += f" in {context}"
             message += f": {str(error)}"
 
             self.logger.log(log_level, message)
-            self.logger.debug(f"Exception details", exc_info=True)
+            self.logger.debug("Exception details", exc_info=True)
 
         return return_value
 
@@ -147,13 +147,15 @@ def retry_on_error(
                     if attempt == max_attempts - 1:
                         # Last attempt failed, re-raise the exception
                         retry_logger.error(
-                            f"Function {func.__name__} failed after {max_attempts} attempts: {e}"
+                            f"Function {func.__name__} failed after "
+                            f"{max_attempts} attempts: {e}"
                         )
                         raise
 
                     # Log retry attempt
                     retry_logger.warning(
-                        f"Function {func.__name__} failed (attempt {attempt + 1}/{max_attempts}): {e}. "
+                        f"Function {func.__name__} failed "
+                        f"(attempt {attempt + 1}/{max_attempts}): {e}. "
                         f"Retrying in {current_delay:.1f} seconds..."
                     )
 

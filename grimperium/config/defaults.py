@@ -6,7 +6,6 @@ and validation schemas for the application configuration.
 """
 
 from typing import Dict, List, Any
-from pathlib import Path
 
 # Required configuration sections
 REQUIRED_CONFIG_SECTIONS = [
@@ -53,8 +52,16 @@ DATABASE_SCHEMA = [
 
 # Configuration validation rules
 CONFIG_VALIDATION_RULES = {
-    "executables": {"type": dict, "required": True, "keys": REQUIRED_EXECUTABLES},
-    "database": {"type": dict, "required": True, "keys": REQUIRED_DATABASE_KEYS},
+    "executables": {
+        "type": dict,
+        "required": True,
+        "keys": REQUIRED_EXECUTABLES,
+    },
+    "database": {
+        "type": dict,
+        "required": True,
+        "keys": REQUIRED_DATABASE_KEYS,
+    },
     "repository_base_path": {"type": str, "required": True},
     "general_settings": {
         "type": dict,
@@ -62,7 +69,11 @@ CONFIG_VALIDATION_RULES = {
         "keys": ["verbose", "lists_directory"],
     },
     "crest_keywords": {"type": str, "required": False, "default": "--gfn2"},
-    "mopac_keywords": {"type": str, "required": False, "default": "PM7 PRECISE XYZ"},
+    "mopac_keywords": {
+        "type": str,
+        "required": False,
+        "default": "PM7 PRECISE XYZ",
+    },
 }
 
 
