@@ -1,7 +1,7 @@
 #!/bin/bash
 # auto-workflow.sh - Sistema de automação local com GitHub Actions
 
-set -e
+set -eo pipefail   # interrompe também em erros de pipeline
 
 # Configurações
 BRANCH_PREFIX="feature/auto"
