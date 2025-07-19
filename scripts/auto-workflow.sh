@@ -4,15 +4,12 @@
 set -e
 
 # Configurações
-REPO_NAME="grimperium"
-DEFAULT_PYTHON="3.9"
 BRANCH_PREFIX="feature/auto"
 
 # Cores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Função: Log colorido
@@ -28,11 +25,41 @@ error() {
     echo -e "${RED}[ERROR] $1${NC}"
 }
 
+# Função: Validar entrada do usuário
+validate_input() {
+    local input="$1"
+    if [[ ! "$input" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        error "Input deve conter apenas caracteres alfanuméricos, hífens e underscores"
+        return 1
+    fi
+}
+
+# Função: Validar comandos antes da execução
+validate_command() {
+    local cmd="$1"
+    local allowed_commands=("git" "pip" "pip3" "pytest" "flake8" "black" "python" "python3" "autoflake" "isort" "mypy" "yamllint")
+    local cmd_name
+    cmd_name=$(echo "$cmd" | awk '{print $1}')
+    
+    for allowed in "${allowed_commands[@]}"; do
+        if [[ "$cmd_name" == "$allowed" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # Função: Criar nova branch automática
 create_auto_branch() {
-    local description=$1
-    local timestamp=$(date +%Y-%m-%d-%H%M%S)
-    local branch_name="${BRANCH_PREFIX}-${timestamp}-${description}"
+    local description="$1"
+    
+    # Sanitizar descrição para nome de branch
+    local sanitized_desc
+    sanitized_desc=$(echo "$description" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')
+    
+    local timestamp
+    timestamp=$(date +%Y-%m-%d-%H%M%S)
+    local branch_name="${BRANCH_PREFIX}-${timestamp}-${sanitized_desc}"
     
     log "Criando branch: $branch_name"
     git checkout -b "$branch_name"
@@ -47,11 +74,11 @@ validate_dependencies() {
         # Verificar se todas as linhas são válidas
         while IFS= read -r line; do
             # Pular linhas vazias e comentários
-            [[ -z "$line" || "$line" =~ ^#.*$ ]] && continue
+            [[ -z "${line}" || "${line}" =~ ^#.*$ ]] && continue
             
-            # Verificar formato básico de dependência
-            if ! [[ "$line" =~ ^[a-zA-Z0-9_-]+([<>=!]+[0-9.]+)?$ ]]; then
-                warn "Formato suspeito na dependência: $line"
+            # Verificar formato básico de dependência (regex melhorada)
+            if ! [[ "${line}" =~ ^[a-zA-Z0-9_.-]+(\[[a-zA-Z0-9_,.-]+\])?([<>=!~]+[0-9a-zA-Z_.,+-]+)?([,;][[:space:]]*[<>=!~]+[0-9a-zA-Z_.,+-]+)*$ ]]; then
+                warn "Formato suspeito na dependência: ${line}"
             fi
         done < requirements.txt
         
@@ -113,14 +140,15 @@ create_pr_and_wait_instructions() {
     log "Criando Pull Request..."
     
     # Criar PR e adicionar label para trigger do Claude Instructor
-    local pr_url=$(gh pr create \
+    local pr_url
+    pr_url=$(gh pr create \
         --title "$title" \
         --body "$body" \
         --base main \
-        --head "$branch_name" \
-        --label "claude-analyze")
+        --head "$branch_name")
     
-    local pr_number=$(echo "$pr_url" | grep -oP '\d+$')
+    local pr_number
+    pr_number=$(echo "$pr_url" | grep -oP '\d+$')
     log "Pull Request #$pr_number criado: $pr_url"
     
     # Aguardar análise do GitHub Actions
@@ -144,7 +172,8 @@ monitor_workflow_status() {
     
     while [ $elapsed -lt $timeout ]; do
         # Verificar se há workflows rodando
-        local running_workflows=$(gh run list --limit 5 --json status --jq '.[] | select(.status == "in_progress") | .status' | wc -l)
+        local running_workflows
+        running_workflows=$(gh run list --limit 5 --json status --jq '.[] | select(.status == "in_progress") | .status' | wc -l)
         
         if [ "$running_workflows" -gt 0 ]; then
             log "Workflows em execução... ($elapsed/$timeout segundos)"
@@ -170,9 +199,12 @@ fetch_claude_instructions() {
     # Aguardar um pouco mais para garantir que o comentário foi postado
     sleep 20
     
-    # Buscar comentários do PR
-    local comments_file=$(mktemp)
-    gh pr view $pr_number --json comments --jq '.comments[] | select(.author.login == "github-actions[bot]") | .body' > "$comments_file"
+    # Buscar comentários do PR com arquivo temporário seguro
+    local comments_file
+    comments_file=$(mktemp -t claude-comments.XXXXXX)
+    trap 'rm -f "${comments_file}"' EXIT
+    
+    gh pr view "$pr_number" --json comments --jq '.comments[] | select(.author.login == "github-actions[bot]") | .body' > "${comments_file}"
     
     if [ -s "$comments_file" ]; then
         log "✓ Instruções recebidas do Claude Instructor"
@@ -187,7 +219,7 @@ fetch_claude_instructions() {
         echo ""
         
         # Perguntar se deve executar automaticamente
-        read -p "Executar instruções automaticamente? (y/N): " auto_exec
+        read -r -p "Executar instruções automaticamente? (y/N): " auto_exec
         
         if [[ $auto_exec =~ ^[Yy]$ ]]; then
             execute_claude_instructions "claude-instructions-pr-$pr_number.md"
@@ -209,9 +241,12 @@ execute_claude_instructions() {
     
     log "Analisando instruções do arquivo: $instructions_file"
     
-    # Extrair blocos bash das instruções
-    local bash_blocks=$(mktemp)
-    grep -A 999 '```bash' "$instructions_file" | grep -B 999 '```' | grep -v '```' > "$bash_blocks"
+    # Extrair blocos bash das instruções com arquivo temporário seguro
+    local bash_blocks
+    bash_blocks=$(mktemp -t claude-bash-blocks.XXXXXX)
+    trap 'rm -f "${bash_blocks}"' EXIT
+    
+    grep -A 999 '```bash' "$instructions_file" | grep -B 999 '```' | grep -v '```' > "${bash_blocks}"
     
     if [ -s "$bash_blocks" ]; then
         echo ""
@@ -220,22 +255,31 @@ execute_claude_instructions() {
         echo "=============================================================="
         echo ""
         
-        read -p "Executar estes comandos? (y/N): " confirm_exec
+        read -r -p "Executar estes comandos? (y/N): " confirm_exec
         
         if [[ $confirm_exec =~ ^[Yy]$ ]]; then
             log "Executando comandos das instruções..."
             
             while IFS= read -r command; do
                 # Pular linhas vazias e comentários
-                [[ -z "$command" || "$command" =~ ^#.*$ ]] && continue
+                [[ -z "${command}" || "${command}" =~ ^#.*$ ]] && continue
                 
-                log "Executando: $command"
-                if eval "$command"; then
-                    log "✓ Comando executado com sucesso"
+                log "Executando: ${command}"
+                
+                # Validar comando antes da execução
+                if validate_command "${command}"; then
+                    if bash -c "${command}"; then
+                        log "✓ Comando executado com sucesso"
+                    else
+                        error "✗ Falha na execução do comando: ${command}"
+                        read -r -p "Continuar mesmo assim? (y/N): " continue_exec
+                        [[ ! "${continue_exec}" =~ ^[Yy]$ ]] && break
+                    fi
                 else
-                    error "✗ Falha na execução do comando: $command"
-                    read -p "Continuar mesmo assim? (y/N): " continue_exec
-                    [[ ! $continue_exec =~ ^[Yy]$ ]] && break
+                    error "✗ Comando não permitido: ${command}"
+                    warn "Comandos permitidos: git, pip, pytest, flake8, black, python, etc."
+                    read -r -p "Pular este comando e continuar? (y/N): " skip_cmd
+                    [[ ! "${skip_cmd}" =~ ^[Yy]$ ]] && break
                 fi
             done < "$bash_blocks"
             
@@ -264,6 +308,11 @@ main() {
                 exit 1
             fi
             
+            # Validar entrada do usuário
+            if ! validate_input "$description"; then
+                exit 1
+            fi
+            
             # Validar estado atual
             if [ -n "$(git status --porcelain)" ]; then
                 error "Working directory não está limpo. Commit ou stash suas alterações."
@@ -275,7 +324,8 @@ main() {
             git pull origin main
             
             # Criar branch
-            local branch_name=$(create_auto_branch "$description")
+            local branch_name
+            branch_name=$(create_auto_branch "$description")
             
             log "✓ Branch $branch_name criada e ativa"
             log "Faça suas alterações e execute: $0 submit '$description'"
@@ -288,6 +338,11 @@ main() {
                 exit 1
             fi
             
+            # Validar entrada do usuário
+            if ! validate_input "$description"; then
+                exit 1
+            fi
+            
             # Verificar se há mudanças
             if [ -z "$(git status --porcelain)" ]; then
                 error "Nenhuma alteração para submeter"
@@ -297,7 +352,7 @@ main() {
             # Validar dependências
             if ! validate_dependencies; then
                 warn "Problemas nas dependências detectados"
-                read -p "Continuar mesmo assim? (y/N): " continue_deps
+                read -r -p "Continuar mesmo assim? (y/N): " continue_deps
                 [[ ! $continue_deps =~ ^[Yy]$ ]] && exit 1
             fi
             
@@ -312,11 +367,13 @@ Alterações realizadas automaticamente via auto-workflow.sh
 
 🤖 Generated with auto-workflow system"
             
-            local current_branch=$(git branch --show-current)
+            local current_branch
+            current_branch=$(git branch --show-current)
             git push origin "$current_branch"
             
             # Criar PR com instruções para Claude
-            local pr_body="## Alterações Automáticas
+            local pr_body
+            pr_body="## Alterações Automáticas
 
 **Descrição**: $description
 **Branch**: $current_branch
@@ -340,11 +397,13 @@ Este PR foi criado pelo sistema auto-workflow.sh e aguarda análise do Claude In
         "status")
             log "Status do auto-workflow:"
             log "Branch atual: $(git branch --show-current)"
-            local modified_files=$(git status --short | wc -l)
+            local modified_files
+            modified_files=$(git status --short | wc -l)
             log "Arquivos modificados: $modified_files"
             
             # Verificar se há PRs abertos
-            local open_prs=$(gh pr list --state open --json number --jq '. | length')
+            local open_prs
+            open_prs=$(gh pr list --state open --json number --jq '. | length')
             log "PRs abertos: $open_prs"
             ;;
             

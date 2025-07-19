@@ -152,13 +152,14 @@ check_github_auth() {
     
     if gh auth status &> /dev/null; then
         log "✓ GitHub CLI autenticado"
-        local user=$(gh api user --jq .login)
+        local user
+        user=$(gh api user --jq .login)
         info "Usuário logado: $user"
     else
         warn "GitHub CLI não está autenticado"
         info "Execute: gh auth login"
         echo ""
-        read -p "Configurar autenticação agora? (y/N): " setup_auth
+        read -r -p "Configurar autenticação agora? (y/N): " setup_auth
         
         if [[ $setup_auth =~ ^[Yy]$ ]]; then
             gh auth login
