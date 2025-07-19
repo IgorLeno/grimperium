@@ -1,0 +1,142 @@
+---
+# Configuração do sistema de automação local - Grimperium v2
+automation:
+  python_version: "3.9"
+  branch_prefix: "feature/auto"
+
+  # Validações obrigatórias antes de PR
+  required_validations:
+    - dependencies_check
+    - lint_check
+    - format_check
+    - basic_tests
+
+  # Comandos de instalação de dependências
+  dependency_managers:
+    - pip
+    - conda  # Para compatibilidade com ci.yml existente
+
+  # Configurações de lint e formatação
+  code_quality:
+    flake8:
+      max_line_length: 88
+      ignore: "E203,W503"
+      exclude: "__pycache__,*.pyc,.git,__init__.py"
+
+    black:
+      line_length: 88
+      target_version: "py39"
+      include: "\\.pyi?$"
+      exclude: "/(venv|env|__pycache__|repository)/"
+
+    pytest:
+      testpaths: "grimperium/tests"
+      python_files: "test_*.py"
+      addopts: "-v --tb=short"
+
+  # Integração com GitHub
+  github:
+    auto_label: "claude-analyze"
+    timeout_minutes: 30
+    pr_template: |
+      ## Alterações Automáticas
+
+      **Descrição**: {description}
+      **Branch**: {branch_name}
+      **Timestamp**: {timestamp}
+
+      ### Validações Executadas Localmente:
+      - [ ] Dependências válidas
+      - [ ] Lint (flake8)
+      - [ ] Formatação (black)
+      - [ ] Testes básicos
+
+      @claude Analise este PR e forneça instruções detalhadas
+      para adequar o merge à branch main.
+
+      ### Sistema de Automação
+      Este PR foi criado pelo sistema auto-workflow.sh e aguarda
+      análise do Claude Instructor.
+
+      #### Arquitetura do Projeto:
+      - **Service-oriented**: Cada serviço herda de BaseService
+      - **Pydantic**: Validação de dados com Molecule model
+      - **Testing**: pytest com mocks para dependências externas
+      - **Configuration**: YAML-driven com config_manager.py
+
+  # Timeouts e configurações
+  timeouts:
+    workflow_analysis: 300  # 5 minutos
+    dependency_check: 120   # 2 minutos
+    test_execution: 180     # 3 minutos
+
+  # Comandos específicos do projeto Grimperium
+  project_specific:
+    test_commands:
+      - "pytest grimperium/tests/ -v"
+      - "python main.py info"  # Teste do sistema
+
+    lint_commands:
+      - "flake8 grimperium/ --max-line-length=88"
+      - "black --check grimperium/"
+
+    dependency_files:
+      - "requirements.txt"
+      - "config.yaml"  # Configuração do projeto
+
+    # Diretórios importantes para validação
+    critical_paths:
+      - "grimperium/services/"
+      - "grimperium/core/"
+      - "grimperium/utils/"
+      - "grimperium/tests/"
+
+    # Arquivos que não devem ser modificados automaticamente
+    protected_files:
+      - "repository/"
+      - "data/*.csv"
+      - "logs/"
+      - "config.yaml"
+
+# Configurações do Claude Instructor
+claude_instructor:
+  focus_areas:
+    - "Arquitetura service-oriented"
+    - "Validação com Pydantic"
+    - "Testes com pytest e mocks"
+    - "Documentação com docstrings"
+    - "Conformidade PEP 8"
+    - "Thread-safety para operações de database"
+    - "Error handling robusto"
+
+  analysis_priorities:
+    high:
+      - "Dependências quebradas ou ausentes"
+      - "Imports circulares"
+      - "Problemas de thread-safety"
+      - "Violations de PEP 8"
+
+    medium:
+      - "Falta de documentação"
+      - "Testes ausentes"
+      - "Performance sub-ótima"
+
+    low:
+      - "Sugestões de refatoração"
+      - "Optimizações menores"
+
+# Configurações de segurança
+security:
+  # Comandos que nunca devem ser executados automaticamente
+  forbidden_commands:
+    - "rm -rf"
+    - "sudo"
+    - "chmod 777"
+    - "pip install --upgrade pip"  # Pode quebrar dependências
+
+  # Arquivos sensíveis que requerem revisão manual
+  sensitive_files:
+    - "*.yml"
+    - "*.yaml"
+    - ".github/workflows/*"
+    - "requirements.txt"

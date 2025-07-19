@@ -1,26 +1,27 @@
-# .github/workflows/claude.yml (melhorado)
-name: Claude Code
+---
+name: Claude Code Instructor
 
-on:
+"on":
+  pull_request:
+    types: [opened, synchronize, labeled]
   issue_comment:
     types: [created]
   pull_request_review_comment:
     types: [created]
-  issues:
-    types: [opened, assigned, labeled]
-  pull_request:
-    types: [opened, synchronize]
 
 jobs:
-  claude:
+  analyze-and-instruct:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'claude-code')) ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'claude-review'))
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'claude-analyze'))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write
@@ -30,15 +31,46 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Run Claude Code
-        uses: anthropics/claude-code-action@beta
+
+      - name: Analyze Code and Generate Instructions
+        uses: anthropics/claude-code-action@beta  # TODO: Pin to SHA
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           custom_instructions: |
-            Você é o agente principal de codificação. Foque em:
-            - Implementar código Python seguindo PEP 8
-            - Usar Pydantic para validação de dados
-            - Implementar testes com pytest
-            - Documentar com docstrings
-            - Seguir a arquitetura service-oriented do projeto
+            MODO: INSTRUTOR APENAS - NÃO EXECUTE COMANDOS
+
+            Analise o código e forneça instruções DETALHADAS
+            para execução local:
+
+            1. **Análise de Dependências**:
+               - Verifique requirements.txt
+               - Identifique dependências inexistentes ou com versões incorretas
+               - Forneça comandos pip/conda específicos para correção
+
+            2. **Validação de Código**:
+               - Execute verificações de lint (flake8)
+               - Verifique formatação (black)
+               - Analise cobertura de testes
+               - Verifique conformidade com PEP 8
+
+            3. **Instruções para Terminal Local**:
+               - Comandos git específicos para branch management
+               - Scripts de instalação de dependências
+               - Comandos de teste e validação
+               - Passos para correção de problemas encontrados
+
+            4. **Formato de Saída**:
+               Forneça instruções em formato markdown executável:
+               ```bash
+               # Comandos específicos aqui
+               ```
+
+            5. **Foco no Projeto Grimperium**:
+               - Arquitetura service-oriented
+               - Validação com Pydantic
+               - Testes com pytest
+               - Documentação com docstrings
+               - Conformidade com workflows CI/CD existentes
+
+            IMPORTANTE: NUNCA execute comandos.
+            APENAS forneça instruções detalhadas.
