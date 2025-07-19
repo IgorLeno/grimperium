@@ -37,15 +37,78 @@ validate_input() {
 # Função: Validar comandos antes da execução
 validate_command() {
     local cmd="$1"
-    local allowed_commands=("git" "pip" "pip3" "pytest" "flake8" "black" "python" "python3" "autoflake" "isort" "mypy" "yamllint")
+    
+    # Padrões perigosos que nunca devem ser executados
+    local forbidden_patterns=(
+        "rm -rf"
+        "chmod 777" 
+        "sudo"
+        "> /dev/"
+        "dd if="
+        "mkfs"
+        "fdisk"
+        "parted"
+        "mount"
+        "umount"
+        "kill -9"
+        "killall"
+        "shutdown"
+        "reboot"
+        "init"
+        "systemctl"
+        "service"
+        "crontab"
+        "at "
+        "nohup"
+        "&>"
+        "2>&1"
+        "|&"
+        "\$("
+        "\`"
+        "eval"
+        "exec"
+        "source"
+        ". "
+    )
+    
+    # Verificar padrões proibidos
+    for pattern in "${forbidden_patterns[@]}"; do
+        if [[ "$cmd" == *"$pattern"* ]]; then
+            error "Padrão perigoso detectado: $pattern"
+            return 1
+        fi
+    done
+    
+    # Lista de comandos explicitamente permitidos
+    local allowed_commands=("git" "pip" "pip3" "pytest" "flake8" "black" "python" "python3" "autoflake" "isort" "mypy" "yamllint" "echo" "cat" "grep" "sed" "awk" "wc" "head" "tail")
     local cmd_name
     cmd_name=$(echo "$cmd" | awk '{print $1}')
     
+    # Verificar se o comando base é permitido
     for allowed in "${allowed_commands[@]}"; do
         if [[ "$cmd_name" == "$allowed" ]]; then
+            # Validações específicas por comando
+            case "$cmd_name" in
+                "git")
+                    # Git: bloquear comandos perigosos
+                    if [[ "$cmd" == *"git rm -rf"* ]] || [[ "$cmd" == *"git reset --hard"* ]] || [[ "$cmd" == *"git clean -fd"* ]]; then
+                        error "Comando git perigoso bloqueado"
+                        return 1
+                    fi
+                    ;;
+                "pip"|"pip3")
+                    # Pip: permitir apenas install, show, list
+                    if [[ ! "$cmd" =~ (install|show|list|freeze) ]]; then
+                        error "Apenas install, show, list e freeze são permitidos para pip"
+                        return 1
+                    fi
+                    ;;
+            esac
             return 0
         fi
     done
+    
+    error "Comando não permitido: $cmd_name"
     return 1
 }
 
@@ -162,31 +225,44 @@ create_pr_and_wait_instructions() {
     fetch_claude_instructions "$pr_number"
 }
 
-# Função: Monitorar workflows
+# Função: Monitorar workflows específicos do PR
 monitor_workflow_status() {
     local pr_number=$1
     local timeout=300  # 5 minutos
     local elapsed=0
+    local wait_time=5
     
-    log "Monitorando workflows para PR #$pr_number..."
+    log "Monitorando workflows específicos do PR #$pr_number..."
     
     while [ $elapsed -lt $timeout ]; do
-        # Verificar se há workflows rodando
-        local running_workflows
-        running_workflows=$(gh run list --limit 5 --json status --jq '.[] | select(.status == "in_progress") | .status' | wc -l)
-        
-        if [ "$running_workflows" -gt 0 ]; then
-            log "Workflows em execução... ($elapsed/$timeout segundos)"
-            sleep 15
-            elapsed=$((elapsed + 15))
+        # Verificar status dos checks específicos do PR
+        local pending_checks
+        if command -v jq >/dev/null 2>&1; then
+            # Se jq estiver disponível, usar a abordagem mais precisa
+            pending_checks=$(gh pr checks "$pr_number" --json state --jq '.[] | select(.state == "PENDING") | .state' 2>/dev/null | wc -l)
         else
-            log "✓ Workflows concluídos"
-            break
+            # Fallback: verificar workflows gerais relacionados à branch
+            local branch_name
+            branch_name=$(gh pr view "$pr_number" --json headRefName --jq .headRefName 2>/dev/null)
+            pending_checks=$(gh run list --branch="$branch_name" --limit 3 --json status --jq '.[] | select(.status == "in_progress") | .status' 2>/dev/null | wc -l)
         fi
+        
+        if [ "$pending_checks" -eq 0 ]; then
+            log "✓ Workflows do PR concluídos"
+            return 0
+        fi
+        
+        log "Workflows em execução... ($elapsed/$timeout segundos) - $pending_checks pendentes"
+        sleep $wait_time
+        elapsed=$((elapsed + wait_time))
+        
+        # Backoff exponencial com máximo de 30 segundos
+        wait_time=$((wait_time > 30 ? 30 : wait_time * 2))
     done
     
     if [ $elapsed -ge $timeout ]; then
         warn "Timeout aguardando workflows - continuando..."
+        return 1
     fi
 }
 
@@ -202,6 +278,7 @@ fetch_claude_instructions() {
     # Buscar comentários do PR com arquivo temporário seguro
     local comments_file
     comments_file=$(mktemp -t claude-comments.XXXXXX)
+    chmod 600 "${comments_file}"  # Permissões seguras: apenas owner pode ler/escrever
     trap 'rm -f "${comments_file}"' EXIT
     
     gh pr view "$pr_number" --json comments --jq '.comments[] | select(.author.login == "github-actions[bot]") | .body' > "${comments_file}"
@@ -244,9 +321,21 @@ execute_claude_instructions() {
     # Extrair blocos bash das instruções com arquivo temporário seguro
     local bash_blocks
     bash_blocks=$(mktemp -t claude-bash-blocks.XXXXXX)
+    chmod 600 "${bash_blocks}"  # Permissões seguras: apenas owner pode ler/escrever
     trap 'rm -f "${bash_blocks}"' EXIT
     
-    grep -A 999 '```bash' "$instructions_file" | grep -B 999 '```' | grep -v '```' > "${bash_blocks}"
+    # Extração mais robusta usando sed para capturar apenas blocos bash
+    sed -n '/^```bash$/,/^```$/{/```/d;p;}' "$instructions_file" > "${bash_blocks}"
+    
+    # Se não encontrou blocos com formato exato, tentar variações
+    if [ ! -s "${bash_blocks}" ]; then
+        sed -n '/^```shell$/,/^```$/{/```/d;p;}' "$instructions_file" > "${bash_blocks}"
+    fi
+    
+    # Se ainda não encontrou, tentar formato menos rigoroso
+    if [ ! -s "${bash_blocks}" ]; then
+        sed -n '/```bash/,/```/{/```/d;p;}' "$instructions_file" > "${bash_blocks}"
+    fi
     
     if [ -s "$bash_blocks" ]; then
         echo ""
@@ -268,7 +357,9 @@ execute_claude_instructions() {
                 
                 # Validar comando antes da execução
                 if validate_command "${command}"; then
-                    if bash -c "${command}"; then
+                    # Execução segura com escape adequado
+                    log "Executando comando validado: ${command}"
+                    if eval "$(printf '%q ' "${command}")"; then
                         log "✓ Comando executado com sucesso"
                     else
                         error "✗ Falha na execução do comando: ${command}"
