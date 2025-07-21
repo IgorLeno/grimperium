@@ -99,25 +99,21 @@ O Grimperium utiliza uma arquitetura modular com separação clara de responsabi
 
 ```
 grimperium/
-├── grimperium/
-│   ├── core/                    # Modelos de domínio
-│   │   └── molecule.py          # Classe Molecule (Pydantic)
-│   ├── services/                # Lógica de negócio
-│   │   ├── pubchem_service.py   # Integração com PubChem
-│   │   ├── conversion_service.py # Conversão de formatos
-│   │   ├── calculation_service.py # Execução de CREST/MOPAC
-│   │   ├── database_service.py  # Persistência em CSV
-│   │   ├── pipeline_orchestrator.py # Orquestração do pipeline
-│   │   └── analysis_service.py  # Análise e relatórios
-│   ├── utils/                   # Utilitários
-│   │   └── config_manager.py    # Gerenciamento de configuração
-│   └── tests/                   # Testes automatizados
-├── docs/                        # Documentação
-├── data/                        # Bancos de dados CSV
-├── repository/                  # Área de trabalho para cálculos
-├── logs/                        # Arquivos de log
-├── config.yaml                  # Configuração principal
-└── main.py                      # Ponto de entrada CLI
+├── main.py                  # Ponto de entrada da aplicação
+├── config.yaml              # Arquivo de configuração principal
+├── requirements.txt         # Dependências Python
+├── grimperium/              # Pacote principal do código-fonte
+│   ├── config/              # Módulo de configuração
+│   ├── core/                # Classes de domínio (ex: Molecule)
+│   ├── services/            # Lógica de negócios
+│   ├── tests/               # Testes automatizados
+│   ├── ui/                  # Componentes de interface (CLI)
+│   └── utils/               # Utilitários (logging, config_manager)
+├── data/                    # Dados de entrada (listas, CSVs)
+├── docs/                    # Documentação do projeto
+├── logs/                    # Arquivos de log
+├── repository/              # Saída dos cálculos
+└── scripts/                 # Scripts de automação e utilitários
 ```
 
 ## Fluxo de Trabalho

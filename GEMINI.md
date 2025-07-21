@@ -19,23 +19,28 @@ O Grimperium parece ser um pipeline de software para química computacional. Ele
 ## 2. Módulos e Arquivos Chave
 
 -   **`main.py`**: O ponto de entrada da aplicação.
--   **`config.yaml`**: Arquivo de configuração principal. É gerenciado por `grimperium/utils/config_manager.py`.
+-   **`config.yaml`**: Arquivo de configuração principal. Gerenciado por `grimperium/utils/config_manager.py`.
 -   **`grimperium/`**: O pacote principal do código-fonte.
-    -   **`services/`**: Contém a lógica de negócios principal, separada por responsabilidade.
-        -   `pipeline_orchestrator.py`: O cérebro do pipeline. Coordena os outros serviços para processar uma molécula. **Este é um arquivo crítico.**
-        -   `pubchem_service.py`: Responsável por interagir com a API do PubChem para buscar dados de moléculas.
-        -   `calculation_service.py`: Gerencia a execução de cálculos computacionais externos.
-        -   `database_service.py`: Lida com a leitura e escrita no arquivo `thermo_pm7.csv`.
-        -   `analysis_service.py`: Provavelmente analisa os resultados dos cálculos.
     -   **`core/`**: Contém as estruturas de dados centrais.
-        -   `molecule.py`: Define o objeto de domínio `Molecule`, que representa uma molécula ao longo do pipeline.
+        -   `molecule.py`: Define o objeto de domínio `Molecule`.
+    -   **`services/`**: Contém a lógica de negócios principal, separada por responsabilidade.
+        -   `pipeline_orchestrator.py`: O cérebro do pipeline. Coordena os outros serviços. **Arquivo crítico.**
+        -   `pubchem_service.py`: Interage com a API do PubChem.
+        -   `conversion_service.py`: Realiza a conversão de formatos de arquivos moleculares.
+        -   `calculation_service.py`: Gerencia a execução de cálculos computacionais.
+        -   `database_service.py`: Lida com a leitura e escrita no banco de dados CSV.
+        -   `analysis_service.py`: Analisa os resultados dos cálculos.
     -   **`ui/`**: Componentes de interface do usuário.
-        -   `interactive_batch.py`: Fornece a interface para os usuários executarem o pipeline em listas de moléculas.
+        -   `interactive_batch.py`: Fornece a interface de linha de comando interativa.
     -   **`utils/`**: Utilitários de baixo nível.
-        -   `config_manager.py`: Carrega e fornece acesso às configurações do `config.yaml`.
-        -   `subprocess_utils.py`: Utilitário para executar comandos de shell externos, essencial para o `calculation_service`.
+        -   `config_manager.py`: Carrega e gerencia as configurações do `config.yaml`.
+        -   `subprocess_utils.py`: Utilitário para executar comandos de shell externos.
+        -   `file_utils.py`: Funções para manipulação de arquivos.
+        -   `error_handler.py`: Módulo para tratamento de erros.
+    -   **`tests/`**: Contém os testes automatizados para os módulos.
 -   **`repository/`**: Diretório de saída onde os resultados dos cálculos são armazenados.
--   **`data/lists/`**: Contém as listas de moléculas a serem processadas.
+-   **`data/`**: Contém dados de entrada, como o `thermo_pm7.csv` e as listas de moléculas em `data/lists/`.
+-   **`scripts/`**: Contém scripts de automação e para configuração do ambiente.
 
 ## 3. Fluxo de Trabalho de Desenvolvimento
 

@@ -12,27 +12,25 @@ Este documento descreve a arquitetura de software modular e baseada em serviços
 *   **Tratamento de Erros Robusto:** Cada serviço implementa tratamento de erros específico e logging detalhado.
 *   **Thread Safety:** Operações críticas como escrita em banco de dados são thread-safe usando FileLocker.
 
-## **2. Estrutura de Diretórios Proposta**
+## **2. Estrutura de Diretórios**
 
 ```
 grimperium/
-├── config/                  # (Opcional) Pode conter schemas de configuração
-├── core/                    # Classes de domínio (ex: Molecule)
-├── interfaces/              # Interface com o usuário (CLI com Typer/Rich)
-├── services/                # Lógica de negócios
-│   └── analysis/            # Lógicas de análise de dados
-├── utils/                   # Utilitários (logging, config_manager)
-├── repository/              # Arquivos de cálculo temporários
-│   ├── sdf/
-│   ├── xyz/
-│   ├── crest/
-│   └── mopac/
-├── data/                    # Arquivos CSV de entrada e saída
+├── main.py                  # Ponto de entrada da aplicação
+├── config.yaml              # Arquivo de configuração principal
+├── requirements.txt         # Dependências Python
+├── grimperium/              # Pacote principal do código-fonte
+│   ├── config/              # Módulo de configuração
+│   ├── core/                # Classes de domínio (ex: Molecule)
+│   ├── services/            # Lógica de negócios
+│   ├── tests/               # Testes automatizados
+│   ├── ui/                  # Componentes de interface (CLI)
+│   └── utils/               # Utilitários (logging, config_manager)
+├── data/                    # Dados de entrada (listas, CSVs)
+├── docs/                    # Documentação do projeto
 ├── logs/                    # Arquivos de log
-├── tests/                   # Testes
-├── main.py                  # Ponto de entrada da CLI
-├── config.yaml              # Arquivo de configuração
-└── requirements.txt         # Dependências Python
+├── repository/              # Saída dos cálculos
+└── scripts/                 # Scripts de automação e utilitários
 ```
 
 ## **3. Descrição dos Módulos Principais**
