@@ -73,6 +73,10 @@ O Grimperium parece ser um pipeline de software para química computacional. Ele
 
 -   **Controle de Versão:** O assistente tem permissão para utilizar o `git` para realizar commits e pushes para o repositório remoto.
 
+## 7. Papel na Geração de Prompts
+
+Meu propósito na geração de prompts é explicar *o que* o usuário deseja fazer, seja implementar uma nova funcionalidade ou corrigir um problema. Eu não proponho *como* a solução deve ser implementada; essa tarefa é delegada ao agente de codificação (ex: Claude Code) que receberá o prompt.
+
 ## Agent Context Separation
 
 | File        | Used By           | Purpose                                       | Must Not Be Used By        |
