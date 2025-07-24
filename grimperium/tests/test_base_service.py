@@ -5,7 +5,6 @@ Tests the BaseService abstract class and FileServiceMixin with proper mocking.
 """
 
 import logging
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -137,7 +136,7 @@ class TestBaseService:
     def test_validate_path_input_valid(self, mock_path):
         """Test valid path input validation."""
         mock_path_instance = MagicMock()
-        mock_path_instance.resolve.return_value = Path("/resolved/path")
+        mock_path_instance.resolve.return_value = "/resolved/path"
         mock_path.return_value = mock_path_instance
 
         service = ConcreteService()
@@ -164,7 +163,7 @@ class TestBaseService:
         """Test path validation when path exists."""
         mock_path_instance = MagicMock()
         mock_path_instance.exists.return_value = True
-        mock_path_instance.resolve.return_value = Path("/resolved/existing/path")
+        mock_path_instance.resolve.return_value = "/resolved/existing/path"
         mock_path.return_value = mock_path_instance
 
         service = ConcreteService()
@@ -206,9 +205,7 @@ class TestBaseService:
         service = ConcreteService("ResultConcreteService")
 
         result = service.create_service_result(
-            success=True,
-            data={"key": "value"},
-            metadata={"operation_time": 1.5}
+            success=True, data={"key": "value"}, metadata={"operation_time": 1.5}
         )
 
         expected = {
@@ -216,7 +213,7 @@ class TestBaseService:
             "service": "ResultConcreteService",
             "data": {"key": "value"},
             "error": None,
-            "metadata": {"operation_time": 1.5}
+            "metadata": {"operation_time": 1.5},
         }
         assert result == expected
 
@@ -225,8 +222,7 @@ class TestBaseService:
         service = ConcreteService("ResultConcreteService")
 
         result = service.create_service_result(
-            success=False,
-            error_message="Operation failed"
+            success=False, error_message="Operation failed"
         )
 
         expected = {
@@ -234,7 +230,7 @@ class TestBaseService:
             "service": "ResultConcreteService",
             "data": None,
             "error": "Operation failed",
-            "metadata": {}
+            "metadata": {},
         }
         assert result == expected
 
@@ -249,7 +245,7 @@ class TestBaseService:
             "service": "MinimalService",
             "data": None,
             "error": None,
-            "metadata": {}
+            "metadata": {},
         }
         assert result == expected
 
@@ -286,6 +282,7 @@ class TestFileServiceMixin:
 
     def test_ensure_directory_exists_no_logger(self):
         """Test directory creation with object that has no logger."""
+
         class MinimalMixin(FileServiceMixin):
             pass
 

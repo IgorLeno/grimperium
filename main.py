@@ -195,7 +195,7 @@ def _execute_batch_logic(
 
         task = progress.add_task("Processing molecules...", total=len(identifiers))
 
-        for i, identifier in enumerate(identifiers):
+        for identifier in identifiers:
             progress.update(task, description=f"Processing: {identifier[:30]}...")
 
             try:
