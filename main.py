@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import typer
 import questionary
@@ -27,6 +27,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from grimperium.utils.config_manager import load_config
+from grimperium.utils.startup_validator import validate_startup_environment
 from grimperium.services.pipeline_orchestrator import (
     process_single_molecule,
     validate_pipeline_setup
@@ -60,6 +61,48 @@ def setup_logging(verbose: bool = False):
     )
 
 
+def validate_environment_and_config(config_file: str) -> Optional[Dict[str, Any]]:
+    """
+    Load configuration and validate the complete startup environment.
+    
+    This function performs comprehensive environment validation including:
+    - Virtual environment detection
+    - Python dependencies check
+    - External tools validation
+    - Directory permissions check
+    
+    Args:
+        config_file: Path to configuration file
+        
+    Returns:
+        Configuration dictionary if validation passes, None otherwise
+    """
+    console.print(Panel.fit(
+        "[bold yellow]🔍 Grimperium Environment Validation[/bold yellow]\n"
+        "[cyan]Checking system readiness...[/cyan]",
+        border_style="yellow"
+    ))
+    
+    # Load configuration
+    rich_print(f"[yellow]📋 Loading configuration from: {config_file}[/yellow]")
+    config = load_config(config_file, PROJECT_ROOT)
+    if not config:
+        rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
+        return None
+    
+    # Perform comprehensive environment validation
+    rich_print("[yellow]🔧 Performing comprehensive environment validation...[/yellow]")
+    if not validate_startup_environment(config, console):
+        rich_print("\n[red]❌ Environment validation failed![/red]")
+        rich_print("[red]Please fix the issues above before continuing.[/red]")
+        return None
+    
+    rich_print("\n[green]✅ Environment validation passed![/green]")
+    rich_print("[green]🚀 System is ready for computational chemistry workflows![/green]")
+    
+    return config
+
+
 # BUSINESS LOGIC FUNCTIONS (DECOUPLED FROM UI)
 
 def _execute_single_molecule_logic(
@@ -86,17 +129,9 @@ def _execute_single_molecule_logic(
         border_style="blue"
     ))
 
-    # Load configuration
-    rich_print(f"[yellow]📋 Loading configuration from: {config_file}[/yellow]")
-    config = load_config(config_file, PROJECT_ROOT)
+    # Validate environment and load configuration
+    config = validate_environment_and_config(config_file)
     if not config:
-        rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
-        return False
-
-    # Validate pipeline setup
-    rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
-    if not validate_pipeline_setup(config):
-        rich_print("[red]❌ Pipeline setup validation failed[/red]")
         return False
 
     # Process the molecule
@@ -166,18 +201,10 @@ def _execute_batch_logic(
 
     rich_print(f"[green]📄 Loaded {len(identifiers)} molecule identifiers[/green]")
 
-    # Load configuration
-    rich_print(f"[yellow]📋 Loading configuration from: {config_file}[/yellow]")
-    config = load_config(config_file, PROJECT_ROOT)
+    # Validate environment and load configuration
+    config = validate_environment_and_config(config_file)
     if not config:
-        rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
-        return {"error": f"Failed to load configuration from: {config_file}"}
-
-    # Validate pipeline setup
-    rich_print("[yellow]🔧 Validating pipeline setup...[/yellow]")
-    if not validate_pipeline_setup(config):
-        rich_print("[red]❌ Pipeline setup validation failed[/red]")
-        return {"error": "Pipeline setup validation failed"}
+        return {"error": "Environment validation or configuration loading failed"}
 
     # Process molecules with progress bar
     rich_print("[green]🚀 Starting batch processing...[/green]")
@@ -254,7 +281,7 @@ def _execute_batch_logic(
 
 def _execute_info_logic(config_file: str) -> bool:
     """
-    Execute system info display logic.
+    Execute system info display logic with comprehensive environment validation.
 
     Args:
         config_file: Path to configuration file
@@ -263,17 +290,11 @@ def _execute_info_logic(config_file: str) -> bool:
         bool: True if info was displayed successfully
     """
     console.print(Panel.fit(
-        "[bold blue]🧪 Grimperium v2 - Diagnóstico do Sistema[/bold blue]",
+        "[bold blue]🧪 Grimperium v2 - System Diagnostics[/bold blue]",
         border_style="blue"
     ))
 
-    # Create diagnostic table
-    table = Table(title="Sistema e Dependências")
-    table.add_column("Componente", style="bold", width=25)
-    table.add_column("Status", justify="center", width=8)
-    table.add_column("Detalhes / Versão", width=50)
-
-    # System Information
+    # System Information Header
     os_name = platform.system()
     os_version = platform.release()
     architecture = platform.machine()
@@ -282,105 +303,48 @@ def _execute_info_logic(config_file: str) -> bool:
         f"{sys.version_info.micro}"
     )
 
-    table.add_row(
-        "Sistema Operacional", "✅", f"{os_name} {os_version} ({architecture})"
-    )
-    table.add_row("Python", "✅", python_version)
+    system_table = Table(title="Basic System Information")
+    system_table.add_column("Component", style="bold", width=20)
+    system_table.add_column("Details", width=50)
 
-    # Conda Environment
-    conda_env = os.environ.get('CONDA_DEFAULT_ENV', 'N/A')
-    if conda_env != 'N/A':
-        table.add_row("Ambiente Conda", "✅", conda_env)
-    else:
-        table.add_row("Ambiente Conda", "⚠️", "Não detectado")
+    system_table.add_row("Operating System", f"{os_name} {os_version} ({architecture})")
+    system_table.add_row("Python Version", python_version)
+    system_table.add_row("Project Root", str(PROJECT_ROOT))
 
-    # Add separator
-    table.add_row("", "", "")
-
-    # External Executables
-    executables = ["crest", "mopac", "obabel"]
-
-    for exe in executables:
-        exe_path = shutil.which(exe)
-        if exe_path:
-            version_info = get_executable_version(exe)
-            table.add_row(f"Executável: {exe}", "✅", f"{exe_path}")
-            table.add_row("", "", f"Versão: {version_info}")
-        else:
-            table.add_row(f"Executável: {exe}", "❌", "Não encontrado no PATH")
-
-    # Add separator
-    table.add_row("", "", "")
-
-    # Python Libraries
-    libraries = ["pandas", "typer", "rich", "pydantic", "pyyaml", "requests"]
-
-    for lib in libraries:
-        version = get_library_version(lib)
-        if version != "Not installed":
-            table.add_row(f"Biblioteca: {lib}", "✅", version)
-        else:
-            table.add_row(f"Biblioteca: {lib}", "❌", "Não instalada")
-
-    console.print(table)
-
-    # Configuration Status
+    console.print(system_table)
     console.print()
+
+    # Load configuration and perform comprehensive validation
     config = load_config(config_file, PROJECT_ROOT)
-    if config:
-        console.print("[green]✅ Configuração carregada com sucesso[/green]")
-
-        # Validate executables
-        from grimperium.utils.config_manager import validate_executables
-        if validate_executables(config):
-            console.print(
-                "[green]✅ Todos os executáveis necessários estão disponíveis[/green]"
-            )
-        else:
-            console.print("[red]❌ Alguns executáveis necessários estão faltando[/red]")
-
-        # Validate pipeline setup
-        if validate_pipeline_setup(config):
-            console.print("[green]✅ Configuração do pipeline é válida[/green]")
-        else:
-            console.print("[red]❌ Validação da configuração do pipeline falhou[/red]")
-
-        # Overall system status
-        console.print()
-        missing_executables = [
-            exe for exe in executables if not shutil.which(exe)
-        ]
-        missing_libraries = [
-            lib for lib in libraries if get_library_version(lib) == "Not installed"
-        ]
-
-        if not missing_executables and not missing_libraries:
-            console.print(
-                "[green]🎉 Sistema configurado corretamente e pronto para "
-                "execução![/green]"
-            )
-        else:
-            console.print(
-                "[yellow]⚠️  Sistema parcialmente configurado. Algumas "
-                "dependências estão faltando.[/yellow]"
-            )
-
-            if missing_executables:
-                console.print(
-                    f"[red]   • Executáveis faltando: "
-                    f"{', '.join(missing_executables)}[/red]"
-                )
-            if missing_libraries:
-                console.print(
-                    f"[red]   • Bibliotecas faltando: "
-                    f"{', '.join(missing_libraries)}[/red]"
-                )
-
-        return True
-
-    else:
-        console.print(f"[red]❌ Falha ao carregar configuração de: {config_file}[/red]")
+    if not config:
+        console.print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return False
+
+    # Run comprehensive environment validation
+    console.print("[yellow]🔍 Running comprehensive environment validation...[/yellow]")
+    validation_success = validate_startup_environment(config, console)
+
+    console.print()
+    
+    # Final status summary
+    if validation_success:
+        console.print(Panel(
+            "[green]🎉 System Status: [bold]READY[/bold][/green]\n"
+            "[green]All checks passed! Grimperium is ready for computational chemistry workflows.[/green]",
+            title="[bold green]✅ System Ready[/bold green]",
+            border_style="green",
+            padding=(1, 2)
+        ))
+    else:
+        console.print(Panel(
+            "[red]⚠️  System Status: [bold]CONFIGURATION REQUIRED[/bold][/red]\n"
+            "[red]Please address the issues shown above before running calculations.[/red]",
+            title="[bold red]❌ Action Required[/bold red]",
+            border_style="red",
+            padding=(1, 2)
+        ))
+
+    return True
 
 
 def _execute_report_logic(
@@ -402,10 +366,9 @@ def _execute_report_logic(
         border_style="blue"
     ))
 
-    # Load configuration
-    config = load_config(config_file, PROJECT_ROOT)
+    # Validate environment and load configuration
+    config = validate_environment_and_config(config_file)
     if not config:
-        rich_print(f"[red]❌ Failed to load configuration from: {config_file}[/red]")
         return False
 
     # Get database paths from configuration
@@ -911,12 +874,14 @@ def handle_single_molecule():
 
         if molecule_input:
             try:
-                _execute_single_molecule_logic(
+                success = _execute_single_molecule_logic(
                     identifier=molecule_input.strip(),
                     identifier_type="name",
                     config_file='config.yaml',
                     verbose=False
                 )
+                if not success:
+                    rich_print("[red]❌ Falha no processamento da molécula[/red]")
             except Exception as e:
                 rich_print(f"[red]❌ Erro no processamento: {e}[/red]")
 
@@ -930,12 +895,14 @@ def handle_single_molecule():
 
         if molecule_input:
             try:
-                _execute_single_molecule_logic(
+                success = _execute_single_molecule_logic(
                     identifier=molecule_input.strip(),
                     identifier_type="SMILES",
                     config_file='config.yaml',
                     verbose=False
                 )
+                if not success:
+                    rich_print("[red]❌ Falha no processamento da molécula[/red]")
             except Exception as e:
                 rich_print(f"[red]❌ Erro no processamento: {e}[/red]")
 
@@ -985,7 +952,9 @@ def handle_system_info():
     Handle system information display.
     """
     try:
-        _execute_info_logic(config_file='config.yaml')
+        success = _execute_info_logic(config_file='config.yaml')
+        if not success:
+            rich_print("[red]❌ Falha ao obter informações do sistema[/red]")
     except Exception as e:
         rich_print(f"[red]❌ Erro ao obter informações do sistema: {e}[/red]")
 

@@ -1,21 +1,32 @@
+# External computational chemistry executables configuration
+# These tools must be installed and accessible for Grimperium to function
+# You can specify either:
+#   - Command name if the tool is in your system PATH (e.g., 'crest')
+#   - Absolute path to the executable (e.g., '/usr/local/bin/crest')
 executables:
-  crest: 'crest'
-  mopac: 'mopac'
-  obabel: 'obabel'
+  crest: 'crest'      # CREST conformational search tool
+  mopac: 'mopac'      # MOPAC quantum chemistry software  
+  obabel: 'obabel'    # OpenBabel molecular format converter
 
-mopac_keywords: 'PM7 EF PRECISE GNORM=0.01 NOINTER GRAPHF VECTORS MMOK CYCLES=20000'
-crest_keywords: '--gfn2'
-repository_base_path: 'repository'
+# Computational chemistry calculation parameters
+mopac_keywords: 'PM7 EF PRECISE GNORM=0.01 NOINTER GRAPHF VECTORS MMOK CYCLES=20000'  # MOPAC PM7 method settings
+crest_keywords: '--gfn2'  # CREST conformational search settings
 
+# Directory structure configuration
+repository_base_path: 'repository'  # Working directory for calculations
+
+# Application behavior settings
 general_settings:
-  verbose: false
-  lists_directory: 'data/lists'
+  verbose: false  # Enable verbose console output
+  lists_directory: 'data/lists'  # Directory for molecule list files
 
+# Logging configuration
 logging:
-  log_file: 'logs/grim_details.log'
-  console_level: 'INFO'
-  file_level: 'DEBUG'
+  log_file: 'logs/grim_details.log'  # Detailed log file path
+  console_level: 'INFO'  # Console logging level (DEBUG, INFO, WARNING, ERROR)
+  file_level: 'DEBUG'    # File logging level (more detailed)
 
+# Database file paths for thermodynamic data
 database:
-  cbs_db_path: 'data/thermo_cbs.csv'
-  pm7_db_path: 'data/thermo_pm7.csv'
+  cbs_db_path: 'data/thermo_cbs.csv'  # CBS reference database
+  pm7_db_path: 'data/thermo_pm7.csv'  # PM7 calculated results database
