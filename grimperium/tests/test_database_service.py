@@ -245,6 +245,7 @@ class TestDatabaseService:
     def test_concurrent_database_access_simulation(self, temp_csv_file):
         """Simulate concurrent access to database."""
         import threading
+
         results = []
 
         def add_molecule(molecule_id):

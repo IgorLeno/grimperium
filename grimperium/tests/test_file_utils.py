@@ -431,6 +431,7 @@ class TestGetUniqueOutputPath:
     @patch("grimperium.utils.file_utils.Path")
     def test_unique_path_infinite_loop_protection(self, mock_path):
         """Test protection against infinite loop in unique path generation."""
+
         def mock_path_factory(path_str):
             mock_instance = MagicMock()
             mock_instance.exists.return_value = True  # Always exists
