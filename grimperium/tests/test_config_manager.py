@@ -5,9 +5,7 @@ This module contains tests for configuration loading, validation,
 and error handling functionality.
 """
 
-import tempfile
 import yaml
-from pathlib import Path
 from unittest.mock import patch, Mock
 import pytest
 
@@ -22,7 +20,9 @@ class TestConfigManager:
         """Provide a valid configuration dictionary."""
         return {
             "executables": {"crest": "crest", "mopac": "mopac", "obabel": "obabel"},
-            "mopac_keywords": "PM7 EF PRECISE GNORM=0.01 NOINTER GRAPHF VECTORS MMOK CYCLES=20000",
+            "mopac_keywords": (
+                "PM7 EF PRECISE GNORM=0.01 NOINTER GRAPHF VECTORS MMOK CYCLES=20000"
+            ),
             "crest_keywords": "--gfn2",
             "repository_base_path": "repository",
             "general_settings": {"verbose": False, "lists_directory": "data/lists"},
@@ -148,7 +148,7 @@ class TestConfigManager:
                 if "${" not in str(config):
                     assert config["executables"]["crest"] == "/opt/crest/bin/crest"
                     assert config["executables"]["mopac"] == "/opt/mopac/mopac"
-            except:
+            except Exception:
                 # Environment substitution might not be implemented yet
                 pass
 
@@ -171,7 +171,7 @@ class TestConfigManager:
             if "repository_base_path" in config:
                 assert config["repository_base_path"] is not None
 
-        except:
+        except Exception:
             # Defaults might not be implemented yet
             pass
 
@@ -189,7 +189,7 @@ class TestConfigManager:
             config = config_manager.load_config(str(config_file))
             # Should load but might warn about invalid paths
             assert config is not None
-        except:
+        except Exception:
             # Strict validation might prevent loading
             pass
 
@@ -241,9 +241,9 @@ class TestConfigManager:
         empty_file.write_text("")
 
         try:
-            config = config_manager.load_config(str(empty_file), tmp_path)
+            config_manager.load_config(str(empty_file), tmp_path)
             # Empty config should either be handled gracefully or raise error
-        except:
+        except Exception:
             pass
 
         # Test file with only comments
@@ -251,8 +251,8 @@ class TestConfigManager:
         comment_only_file.write_text("# This is just a comment\n# Another comment\n")
 
         try:
-            config = config_manager.load_config(str(comment_only_file), tmp_path)
-        except:
+            config_manager.load_config(str(comment_only_file), tmp_path)
+        except Exception:
             pass
 
     def test_config_merge_with_defaults(self, tmp_path):
@@ -275,7 +275,7 @@ class TestConfigManager:
                 if section in config:
                     assert config[section] is not None
 
-        except:
+        except Exception:
             # Default merging might not be implemented yet
             pass
 

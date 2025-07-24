@@ -6,7 +6,7 @@ Tests the BaseService abstract class and FileServiceMixin with proper mocking.
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,14 +15,14 @@ from grimperium.utils.base_service import BaseService, FileServiceMixin
 
 class ConcreteService(BaseService):
     """Concrete implementation of BaseService for testing."""
-    
+
     def __init__(self, service_name=None):
         super().__init__(service_name)
 
 
 class ConcreteServiceWithFileMixin(BaseService, FileServiceMixin):
     """Test service that combines BaseService and FileServiceMixin."""
-    
+
     def __init__(self, service_name=None):
         super().__init__(service_name)
 
@@ -52,18 +52,18 @@ class TestBaseService:
         """Test info logging."""
         service = ConcreteService("ConcreteService")
         service.logger = MagicMock(spec=logging.Logger)
-        
+
         service.log_info("Test message")
-        
+
         service.logger.info.assert_called_once_with("[ConcreteService] Test message")
 
     def test_log_info_with_args(self):
         """Test info logging with arguments."""
         service = ConcreteService("ConcreteService")
         service.logger = MagicMock(spec=logging.Logger)
-        
+
         service.log_info("Test message %s", "arg1", extra={"key": "value"})
-        
+
         service.logger.info.assert_called_once_with(
             "[ConcreteService] Test message %s", "arg1", extra={"key": "value"}
         )
@@ -72,27 +72,29 @@ class TestBaseService:
         """Test debug logging."""
         service = ConcreteService("ConcreteService")
         service.logger = MagicMock(spec=logging.Logger)
-        
+
         service.log_debug("Debug message")
-        
+
         service.logger.debug.assert_called_once_with("[ConcreteService] Debug message")
 
     def test_log_warning(self):
         """Test warning logging."""
         service = ConcreteService("ConcreteService")
         service.logger = MagicMock(spec=logging.Logger)
-        
+
         service.log_warning("Warning message")
-        
-        service.logger.warning.assert_called_once_with("[ConcreteService] Warning message")
+
+        service.logger.warning.assert_called_once_with(
+            "[ConcreteService] Warning message"
+        )
 
     def test_log_error(self):
         """Test error logging."""
         service = ConcreteService("ConcreteService")
         service.logger = MagicMock(spec=logging.Logger)
-        
+
         service.log_error("Error message")
-        
+
         service.logger.error.assert_called_once_with("[ConcreteService] Error message")
 
     def test_validate_string_input_valid(self):
@@ -153,7 +155,9 @@ class TestBaseService:
 
         service = ConcreteService()
         with pytest.raises(ValueError, match="test_path does not exist"):
-            service.validate_path_input("/nonexistent/path", "test_path", must_exist=True)
+            service.validate_path_input(
+                "/nonexistent/path", "test_path", must_exist=True
+            )
 
     @patch("pathlib.Path")
     def test_validate_path_input_exists(self, mock_path):
@@ -164,7 +168,9 @@ class TestBaseService:
         mock_path.return_value = mock_path_instance
 
         service = ConcreteService()
-        result = service.validate_path_input("/existing/path", "test_path", must_exist=True)
+        result = service.validate_path_input(
+            "/existing/path", "test_path", must_exist=True
+        )
 
         assert result == "/resolved/existing/path"
         mock_path_instance.exists.assert_called_once()
@@ -198,7 +204,7 @@ class TestBaseService:
     def test_create_service_result_success(self):
         """Test creating successful service result."""
         service = ConcreteService("ResultConcreteService")
-        
+
         result = service.create_service_result(
             success=True,
             data={"key": "value"},
@@ -217,7 +223,7 @@ class TestBaseService:
     def test_create_service_result_failure(self):
         """Test creating failure service result."""
         service = ConcreteService("ResultConcreteService")
-        
+
         result = service.create_service_result(
             success=False,
             error_message="Operation failed"
@@ -235,7 +241,7 @@ class TestBaseService:
     def test_create_service_result_minimal(self):
         """Test creating minimal service result."""
         service = ConcreteService("MinimalService")
-        
+
         result = service.create_service_result(success=True)
 
         expected = {
@@ -284,7 +290,7 @@ class TestFileServiceMixin:
             pass
 
         mixin = MinimalMixin()
-        
+
         with patch("pathlib.Path") as mock_path:
             mock_path_instance = MagicMock()
             mock_path_instance.mkdir.side_effect = OSError("Error")
@@ -413,11 +419,11 @@ class ConcreteServiceIntegration:
     def test_combined_service_functionality(self):
         """Test combined service with both base and file functionality."""
         service = ConcreteServiceWithFileMixin("IntegratedService")
-        
+
         # Test BaseService functionality
         assert service.service_name == "IntegratedService"
         assert service.logger is not None
-        
+
         # Test that both sets of methods are available
         assert hasattr(service, "log_info")
         assert hasattr(service, "validate_string_input")
@@ -433,8 +439,8 @@ class ConcreteServiceIntegration:
 
         service = ConcreteServiceWithFileMixin("LoggingConcreteService")
         service.logger = MagicMock(spec=logging.Logger)
-        
+
         result = service.ensure_directory_exists("/test/path")
-        
+
         assert result is False
         service.logger.error.assert_called_once()

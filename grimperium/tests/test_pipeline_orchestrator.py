@@ -7,9 +7,8 @@ computational chemistry software and network requests.
 """
 
 import os
-import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 import pytest
 import pandas as pd
 
@@ -76,9 +75,16 @@ class TestPipelineOrchestrator:
 
                         # Create appropriate content based on file type
                         if output_path.suffix == ".xyz":
-                            content = "3\nMock XYZ file\nC 0.0 0.0 0.0\nH 1.0 0.0 0.0\nH -1.0 0.0 0.0\n"
+                            content = (
+                                "3\nMock XYZ file\n"
+                                "C 0.0 0.0 0.0\nH 1.0 0.0 0.0\nH -1.0 0.0 0.0\n"
+                            )
                         elif output_path.suffix == ".pdb":
-                            content = "HEADER    Mock PDB file\nATOM      1  C   MOL     1       0.000   0.000   0.000\nEND\n"
+                            content = (
+                                "HEADER    Mock PDB file\n"
+                                "ATOM      1  C   MOL     1       "
+                                "0.000   0.000   0.000\nEND\n"
+                            )
                         elif output_path.suffix == ".smi":
                             content = "CCO ethanol\n"
                         else:
@@ -92,7 +98,8 @@ class TestPipelineOrchestrator:
                 crest_output = Path(cwd) / "crest_best.xyz"
                 crest_output.parent.mkdir(parents=True, exist_ok=True)
                 crest_output.write_text(
-                    "3\nCREST best conformer\nC 0.0 0.0 0.0\nH 1.0 0.0 0.0\nH -1.0 0.0 0.0\n"
+                    "3\nCREST best conformer\n"
+                    "C 0.0 0.0 0.0\nH 1.0 0.0 0.0\nH -1.0 0.0 0.0\n"
                 )
 
             elif "mopac" in command[0]:
@@ -112,9 +119,9 @@ class TestPipelineOrchestrator:
                     mopac_output = """
  MOPAC Mock Output File
  **********************
- 
+
  FINAL HEAT OF FORMATION = -12.345 KCAL/MOL
- 
+
  COMPUTATION TIME = 0.01 SECONDS
 """
                     output_file.write_text(mopac_output)
@@ -126,15 +133,15 @@ class TestPipelineOrchestrator:
     def setup_mock_pubchem(self, mocker, expected_sdf_path):
         """Set up mock for PubChem service."""
 
-        def mock_download_sdf(name, output_dir):
+        def mock_download_sdf(_name, _output_dir):
             """Mock PubChem download that creates a fake SDF file."""
             # Ensure the directory structure exists
             expected_sdf_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Create mock SDF file at expected location
             sdf_content = """
-  Mrv2014 01012021 2D          
- 
+  Mrv2014 01012021 2D
+
   3  2  0  0  0  0            999 V2000
     0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
     1.0000    0.0000    0.0000 H   0  0  0  0  0  0  0  0  0  0  0  0
@@ -252,7 +259,7 @@ $$$$
         expected_sdf_path = tmp_path / "test_molecule" / "test_molecule.sdf"
 
         # Setup mocks
-        mock_pubchem = self.setup_mock_pubchem(mocker, expected_sdf_path)
+        self.setup_mock_pubchem(mocker, expected_sdf_path)
 
         # Mock conversion service to fail
         mocker.patch(
@@ -279,7 +286,7 @@ $$$$
         expected_sdf_path = tmp_path / "test_molecule" / "test_molecule.sdf"
 
         # Setup mocks for early stages
-        mock_pubchem = self.setup_mock_pubchem(mocker, expected_sdf_path)
+        self.setup_mock_pubchem(mocker, expected_sdf_path)
 
         # Mock conversion to succeed
         mocker.patch(

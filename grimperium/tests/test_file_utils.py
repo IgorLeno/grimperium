@@ -5,7 +5,6 @@ Tests all file utility functions with proper mocking to isolate from filesystem.
 """
 
 import logging
-import unittest.mock as mock
 from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -273,7 +272,9 @@ class TestValidateFileFormat:
 
     def test_validate_format_expected_formats(self):
         """Test validation with specific expected formats."""
-        result, error = validate_file_format("data.csv", expected_formats=["csv", "txt"])
+        result, error = validate_file_format(
+            "data.csv", expected_formats=["csv", "txt"]
+        )
         assert result is True
         assert error == ""
 
@@ -312,11 +313,11 @@ class TestFindFilesByPattern:
         mock_path.return_value = mock_path_instance
         mock_path_instance.exists.return_value = True
         mock_path_instance.is_dir.return_value = True
-        
+
         mock_file1 = MagicMock()
         mock_file1.is_file.return_value = True
         mock_file1.absolute.return_value = Path("/test/file1.csv")
-        
+
         mock_file2 = MagicMock()
         mock_file2.is_file.return_value = True
         mock_file2.absolute.return_value = Path("/test/file2.csv")
@@ -361,7 +362,7 @@ class TestFindFilesByPattern:
         mock_path.return_value = mock_path_instance
         mock_path_instance.exists.return_value = True
         mock_path_instance.is_dir.return_value = True
-        
+
         mock_files = []
         for i in range(5):
             mock_file = MagicMock()
@@ -405,7 +406,8 @@ class TestGetUniqueOutputPath:
         """Test unique path generation when file exists."""
         mock_path_instance = MagicMock()
         mock_path.return_value = mock_path_instance
-        mock_path_instance.exists.side_effect = [True, False]  # First exists, second doesn't
+        # First exists, second doesn't
+        mock_path_instance.exists.side_effect = [True, False]
         mock_path_instance.stem = "output"
         mock_path_instance.suffix = ".txt"
         mock_path_instance.parent = Path("/test")
@@ -422,7 +424,7 @@ class TestGetUniqueOutputPath:
         mock_path_instance.with_suffix.return_value = mock_path_instance
         mock_path_instance.exists.return_value = False
 
-        result = get_unique_output_path("output.txt", extension="csv")
+        get_unique_output_path("output.txt", extension="csv")
 
         mock_path_instance.with_suffix.assert_called_once_with(".csv")
 
@@ -435,7 +437,9 @@ class TestGetUniqueOutputPath:
             mock_instance.stem = "output"
             mock_instance.suffix = ".txt"
             mock_instance.parent = MagicMock()
-            mock_instance.parent.__truediv__ = lambda self, other: MagicMock(exists=lambda: True)
+            mock_instance.parent.__truediv__ = lambda self, other: MagicMock(
+                exists=lambda: True
+            )
             return mock_instance
 
         mock_path.side_effect = mock_path_factory
@@ -455,7 +459,7 @@ class TestCopyFileSafely:
         mock_source = MagicMock()
         mock_source.exists.return_value = True
         mock_source.is_file.return_value = True
-        
+
         mock_dest = MagicMock()
         mock_dest.exists.return_value = False
         mock_dest.parent = Path("/dest")
@@ -497,7 +501,7 @@ class TestCopyFileSafely:
         mock_source = MagicMock()
         mock_source.exists.return_value = True
         mock_source.is_file.return_value = True
-        
+
         mock_dest = MagicMock()
         mock_dest.exists.return_value = True
 
@@ -515,7 +519,7 @@ class TestCopyFileSafely:
         mock_source = MagicMock()
         mock_source.exists.return_value = True
         mock_source.is_file.return_value = True
-        
+
         mock_dest = MagicMock()
         mock_dest.exists.return_value = False
         mock_dest.parent = Path("/dest")
@@ -524,7 +528,9 @@ class TestCopyFileSafely:
         mock_ensure_dir.return_value = True
         mock_logger = MagicMock(spec=logging.Logger)
 
-        result = copy_file_safely("/source/file.txt", "/dest/file.txt", logger=mock_logger)
+        result = copy_file_safely(
+            "/source/file.txt", "/dest/file.txt", logger=mock_logger
+        )
 
         assert result is True
         mock_logger.debug.assert_called_once()
@@ -539,7 +545,7 @@ class TestCleanupTempFiles:
         mock_file1 = MagicMock()
         mock_file1.exists.return_value = True
         mock_file1.is_file.return_value = True
-        
+
         mock_file2 = MagicMock()
         mock_file2.exists.return_value = True
         mock_file2.is_file.return_value = True

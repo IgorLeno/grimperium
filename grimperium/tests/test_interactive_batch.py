@@ -5,10 +5,8 @@ This module contains comprehensive tests for the interactive batch workflow
 functionality, focusing on the validation logic and user interaction scenarios.
 """
 
-import tempfile
-import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import patch
 import pytest
 
 from grimperium.ui.interactive_batch import InteractiveBatchWorkflow

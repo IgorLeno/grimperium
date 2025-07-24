@@ -6,8 +6,6 @@ Tests all subprocess utility functions with proper mocking.
 
 import logging
 import subprocess
-import time
-import unittest.mock as mock
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -327,11 +325,13 @@ class TestValidateExecutableVersion:
         result = validate_executable_version("python")
 
         assert result == "Python 3.8.0"
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_check.assert_called_once()
         call_args = mock_check.call_args
         assert call_args[0][0] == "python"  # First arg is executable name
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_execute.assert_called_once()
         call_args = mock_execute.call_args
         assert call_args[0] == (["python", "--version"],)
@@ -345,7 +345,8 @@ class TestValidateExecutableVersion:
         result = validate_executable_version("nonexistent")
 
         assert result is None
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_check.assert_called_once()
         call_args = mock_check.call_args
         assert call_args[0][0] == "nonexistent"  # First arg is executable name
@@ -381,7 +382,8 @@ class TestValidateExecutableVersion:
         )
 
         assert result == "version 1.0"
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_execute.assert_called_once()
         call_args = mock_execute.call_args
         assert call_args[0] == (["myprogram", "-v"],)
@@ -416,8 +418,8 @@ class TestCreateOutputFilePath:
     def test_create_output_path_custom_directory(self):
         """Test creating output path in custom directory."""
         result = create_output_file_path(
-            "/path/to/input.xyz", 
-            "pdb", 
+            "/path/to/input.xyz",
+            "pdb",
             output_dir="/output"
         )
         expected = str(Path("/output/input.pdb").absolute())
