@@ -55,6 +55,24 @@ O Grimperium parece ser um pipeline de software para química computacional. Ele
 -   O projeto depende da execução de processos externos (via `subprocess_utils.py`), o que significa que o ambiente de execução deve ter as ferramentas de cálculo necessárias instaladas e no PATH do sistema.
 -   A manipulação de erros parece ser centralizada através de `grimperium/utils/error_handler.py` e exceções customizadas em `grimperium/exceptions.py`.
 
+## 5. Comandos Core
+
+### `qupdate` - Atualização de Documentação
+
+**Propósito:** Sincronizar a documentação com o estado atual do código.
+
+**Fluxo de Execução:**
+1.  Analisar o código.
+2.  Analisar as mudanças.
+3.  Atualizar a documentação.
+4.  Gerar o sumário.
+5.  Realizar o commit das mudanças com a mensagem "docs: update project documentation".
+6.  Realizar o push para o repositório remoto.
+
+## 6. Permissões
+
+-   **Controle de Versão:** O assistente tem permissão para utilizar o `git` para realizar commits e pushes para o repositório remoto.
+
 ## Agent Context Separation
 
 | File        | Used By           | Purpose                                       | Must Not Be Used By        |
