@@ -19,60 +19,68 @@ grimperium/
 
 ### 📋 **Raiz do Projeto**
 ```
-/home/igor_fern/projects/grimperium/
-├── ACTION_PLAN.md              # Plano de desenvolvimento por fases
-├── ARCHITECTURE_v2.md          # Documentação da arquitetura do sistema
-├── DATABASE_SCHEMA_v2.md       # Esquema dos bancos de dados
-├── INSTALL_v2.md               # Instruções de instalação
-├── PRD_v2.md                   # Product Requirements Document
-├── README_v2.md                # Documentação principal do projeto
-├── config.yaml                 # Arquivo de configuração principal
-├── main.py                     # Ponto de entrada da aplicação CLI
-├── test_batch.txt              # Arquivo de teste com moléculas de exemplo
-└── PROJECT_STRUCTURE.md        # Este arquivo
+/home/igor/Projetos/grimperium/
+├── .coderabbit.yaml
+├── .flake8
+├── .gitignore
+├── AGENT.md
+├── CLAUDE.md
+├── codecov.yml
+├── config.yaml
+├── GEMINI.md
+├── main.py
+├── MOPAC Error message.txt
+├── requirements.txt
+├── setup_environment.sh
+├── .github/
+├── data/
+├── docs/
+├── grimperium/
+├── lists/
+├── logs/
+└── repository/
 ```
 
 ### 🧪 **Pacote Principal (grimperium/)**
 ```
 grimperium/
-├── __init__.py                 # Inicialização do pacote Python
-├── config/                     # Configurações específicas do sistema
-│   └── __init__.py
-├── core/                       # Modelos de domínio centrais
+├── __init__.py
+├── constants.py
+├── exceptions.py
+├── config/
 │   ├── __init__.py
-│   └── molecule.py             # Classe Molecule (Pydantic BaseModel)
-├── data/                       # Diretório para bancos de dados CSV
-│   └── __init__.py
-├── interfaces/                 # Interfaces futuras (APIs, web)
-│   └── __init__.py
-├── logs/                       # Diretório para arquivos de log
-│   └── __init__.py
-├── repository/                 # Diretório de trabalho para arquivos moleculares
+│   └── defaults.py
+├── core/
 │   ├── __init__.py
-│   ├── crest/                  # Arquivos de saída do CREST
-│   │   └── __init__.py
-│   ├── mopac/                  # Arquivos de saída do MOPAC
-│   │   └── __init__.py
-│   ├── sdf/                    # Arquivos SDF (estruturas 3D)
-│   │   └── __init__.py
-│   └── xyz/                    # Arquivos XYZ (coordenadas)
-│       └── __init__.py
-├── services/                   # Serviços de negócio
+│   └── molecule.py
+├── services/
 │   ├── __init__.py
-│   ├── analysis/               # Serviços de análise específicos
-│   │   └── __init__.py
-│   ├── analysis_service.py     # Análise de progresso e relatórios
-│   ├── calculation_service.py  # Integração com CREST e MOPAC
-│   ├── conversion_service.py   # Conversão de formatos (OpenBabel)
-│   ├── database_service.py     # Persistência thread-safe em CSV
-│   ├── pipeline_orchestrator.py # Orquestração do pipeline completo
-│   └── pubchem_service.py      # Integração com PubChem
-├── tests/                      # Testes automatizados
+│   ├── analysis_service.py
+│   ├── calculation_service.py
+│   ├── conversion_service.py
+│   ├── database_service.py
+│   ├── pipeline_orchestrator.py
+│   └── pubchem_service.py
+├── tests/
 │   ├── __init__.py
-│   └── test_pipeline_orchestrator.py # Testes do orquestrador principal
-└── utils/                      # Utilitários de apoio
+│   ├── test_base_service.py
+│   ├── test_config_manager.py
+│   ├── test_database_service.py
+│   ├── test_error_handler.py
+│   ├── test_file_utils.py
+│   ├── test_interactive_batch.py
+│   ├── test_pipeline_orchestrator.py
+│   └── test_subprocess_utils.py
+├── ui/
+│   ├── __init__.py
+│   └── interactive_batch.py
+└── utils/
     ├── __init__.py
-    └── config_manager.py       # Gerenciamento de configuração YAML
+    ├── base_service.py
+    ├── config_manager.py
+    ├── error_handler.py
+    ├── file_utils.py
+    └── subprocess_utils.py
 ```
 
 ---
@@ -83,12 +91,10 @@ grimperium/
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `ACTION_PLAN.md` | Plano mestre de desenvolvimento organizado em fases |
-| `ARCHITECTURE_v2.md` | Arquitetura do software e decisões de design |
-| `DATABASE_SCHEMA_v2.md` | Esquema e estrutura dos bancos de dados CSV |
-| `INSTALL_v2.md` | Instruções de instalação e dependências |
-| `PRD_v2.md` | Requisitos do produto e especificações funcionais |
-| `README_v2.md` | Documentação principal e guia de uso |
+| `docs/architecture.md` | Arquitetura do software e decisões de design |
+| `docs/database_schema.md`| Esquema e estrutura dos bancos de dados CSV |
+| `docs/project_struture.md`| Este arquivo, descrevendo a estrutura do projeto |
+| `docs/README.md` | Documentação principal e guia de uso |
 
 ### ⚙️ **Configuração**
 
@@ -123,23 +129,35 @@ grimperium/
 | Arquivo | Descrição |
 |---------|-----------|
 | `utils/config_manager.py` | Carregamento e validação de configuração YAML |
+| `utils/error_handler.py` | Tratamento centralizado de erros |
+| `utils/file_utils.py` | Funções para manipulação de arquivos |
+| `utils/subprocess_utils.py` | Utilitário para executar comandos de shell externos |
+| `utils/base_service.py` | Classe base para serviços com funcionalidade comum |
+
+#### **UI (Interface com Usuário)**
+| Arquivo | Descrição |
+|---------|-----------|
+| `ui/interactive_batch.py` | Fornece a interface de linha de comando interativa |
 
 #### **Tests (Testes Automatizados)**
 | Arquivo | Descrição |
 |---------|-----------|
-| `tests/test_pipeline_orchestrator.py` | Testes com mocks inteligentes para subprocess |
+| `tests/test_pipeline_orchestrator.py` | Testes do orquestrador principal |
+| `tests/test_database_service.py` | Testes do serviço de banco de dados |
+| `tests/test_config_manager.py` | Testes do gerenciador de configuração |
+| `tests/test_error_handler.py` | Testes do tratador de erros |
+| `tests/test_file_utils.py` | Testes dos utilitários de arquivo |
+| `tests/test_subprocess_utils.py` | Testes dos utilitários de subprocesso |
+| `tests/test_interactive_batch.py` | Testes da interface interativa |
+| `tests/test_base_service.py` | Testes da classe de serviço base |
 
 ### 🗂️ **Diretórios de Dados e Trabalho**
 
 | Diretório | Finalidade |
 |-----------|------------|
-| `data/` | Armazenamento de bancos de dados CSV (thermo_cbs.csv, thermo_pm7.csv) |
+| `data/` | Armazenamento de bancos de dados CSV e listas de moléculas |
 | `logs/` | Arquivos de log detalhados da aplicação |
 | `repository/` | Área de trabalho para arquivos moleculares por cálculo |
-| `repository/sdf/` | Arquivos SDF baixados do PubChem |
-| `repository/xyz/` | Arquivos XYZ convertidos |
-| `repository/crest/` | Resultados de busca conformacional |
-| `repository/mopac/` | Resultados de cálculos quânticos |
 
 ---
 
@@ -153,57 +171,13 @@ graph LR
     D --> E[PDB Files]
     E --> F[MOPAC Output]
     F --> G[CSV Database]
-    
-    B -.-> H[repository/sdf/]
-    C -.-> I[repository/xyz/]
-    D -.-> J[repository/crest/]
-    F -.-> K[repository/mopac/]
-    G -.-> L[data/]
+
+    B -.-> H[repository/molecule_name/molecule.sdf]
+    C -.-> I[repository/molecule_name/molecule.xyz]
+    D -.-> J[repository/molecule_name/crest_output]
+    F -.-> K[repository/molecule_name/mopac_output]
+    G -.-> L[data/thermo_pm7.csv]
 ```
-
----
-
-## 🔧 **Arquivos de Configuração e Teste**
-
-### **config.yaml**
-```yaml
-executables:
-  crest: 'crest'
-  mopac: 'mopac'
-  obabel: 'obabel'
-
-mopac_keywords: 'PM7 PRECISE XYZ'
-crest_keywords: '--gfn2'
-
-logging:
-  log_file: 'logs/grim_details.log'
-  console_level: 'INFO'
-  file_level: 'DEBUG'
-
-database:
-  cbs_db_path: 'data/thermo_cbs.csv'
-  pm7_db_path: 'data/thermo_pm7.csv'
-```
-
-### **test_batch.txt**
-```
-methane
-ethanol
-water
-```
-
----
-
-## 📊 **Estatísticas do Projeto**
-
-| Métrica | Valor |
-|---------|-------|
-| **Total de Arquivos Python** | 11 |
-| **Total de Módulos de Serviço** | 6 |
-| **Total de Arquivos de Teste** | 1 |
-| **Total de Arquivos de Documentação** | 7 |
-| **Diretórios de Código** | 8 |
-| **Comandos CLI Disponíveis** | 4 |
 
 ---
 
@@ -240,16 +214,3 @@ python main.py info
 # Executar testes
 pytest tests/
 ```
-
----
-
-## 📝 **Notas de Desenvolvimento**
-
-- **Python 3.8+**: Compatibilidade mínima
-- **Dependências Principais**: Typer, Rich, Pydantic, Pandas, PubChemPy, FileList
-- **Padrão de Código**: PEP 8, Type Hints, Docstrings detalhadas
-- **Logging**: Estruturado com níveis configuráveis
-- **Testes**: pytest com mocks inteligentes
-- **Configuração**: YAML centralizada e validada
-
-**Grimperium v2 - Sistema completo de automação para química computacional** 🧪✨

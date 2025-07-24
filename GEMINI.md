@@ -1,6 +1,6 @@
 # Memória do Projeto: Grimperium
 
-> **Notice: Multi-Agent Context Separation** bnm,.
+> **Notice: Multi-Agent Context Separation**
 > This file (`GEMINI.md`) contains the instructions for the **Gemini** assistant, which acts as a **Code Analyzer and Prompt Generator**.
 > - Do not use or reference this file in sessions with coding agents like AMP (ampcode) or Claude Code.
 > - For other agents' context, always use the appropriate context file (e.g., `AGENT.md`, `CLAUDE.md`).

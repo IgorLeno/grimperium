@@ -33,7 +33,7 @@ conda create --name grimperium python=3.9
 conda activate grimperium
 
 # Instalar dependências Python
-pip install typer rich questionary pandas pyyaml requests pubchempy filelock pydantic
+pip install -r requirements.txt
 ```
 
 ## Configuração e Execução
