@@ -6,8 +6,6 @@ Tests all subprocess utility functions with proper mocking.
 
 import logging
 import subprocess
-import time
-import unittest.mock as mock
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -34,7 +32,7 @@ class TestSubprocessResult:
             stdout="output",
             stderr="",
             timeout_occurred=False,
-            execution_time=1.5
+            execution_time=1.5,
         )
 
         assert result.command == command
@@ -51,7 +49,7 @@ class TestSubprocessResult:
             returncode=0,
             stdout="output",
             stderr="",
-            timeout_occurred=False
+            timeout_occurred=False,
         )
         assert result.success is True
 
@@ -62,18 +60,14 @@ class TestSubprocessResult:
             returncode=1,
             stdout="",
             stderr="error",
-            timeout_occurred=False
+            timeout_occurred=False,
         )
         assert result.success is False
 
     def test_success_property_false_timeout(self):
         """Test success property when timeout occurred."""
         result = SubprocessResult(
-            command=["ls"],
-            returncode=0,
-            stdout="",
-            stderr="",
-            timeout_occurred=True
+            command=["ls"], returncode=0, stdout="", stderr="", timeout_occurred=True
         )
         assert result.success is False
 
@@ -83,7 +77,7 @@ class TestSubprocessResult:
             command=["python", "-c", "print('hello')"],
             returncode=0,
             stdout="hello",
-            stderr=""
+            stderr="",
         )
         assert result.command_str == "python -c print('hello')"
 
@@ -94,7 +88,7 @@ class TestSubprocessResult:
             returncode=0,
             stdout="output",
             stderr="",
-            timeout_occurred=False
+            timeout_occurred=False,
         )
         expected = "SubprocessResult(ls) -> SUCCESS (code: 0)"
         assert str(result) == expected
@@ -106,7 +100,7 @@ class TestSubprocessResult:
             returncode=1,
             stdout="",
             stderr="",
-            timeout_occurred=False
+            timeout_occurred=False,
         )
         expected = "SubprocessResult(false) -> FAILED (code: 1)"
         assert str(result) == expected
@@ -120,11 +114,7 @@ class TestExecuteCommand:
     def test_execute_command_success(self, mock_time, mock_run):
         """Test successful command execution."""
         mock_time.side_effect = [100.0, 101.5]  # start and end times
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="output",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="output", stderr="")
 
         result = execute_command(["ls", "-la"])
 
@@ -141,7 +131,7 @@ class TestExecuteCommand:
             timeout=None,
             capture_output=True,
             text=True,
-            env=None
+            env=None,
         )
 
     @patch("subprocess.run")
@@ -149,11 +139,7 @@ class TestExecuteCommand:
     def test_execute_command_with_options(self, mock_time, mock_run):
         """Test command execution with custom options."""
         mock_time.side_effect = [100.0, 101.0]
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="output",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="output", stderr="")
 
         result = execute_command(
             ["python", "script.py"],
@@ -161,7 +147,7 @@ class TestExecuteCommand:
             timeout=30,
             capture_output=False,
             text=False,
-            env={"VAR": "value"}
+            env={"VAR": "value"},
         )
 
         assert result.success is True
@@ -171,16 +157,14 @@ class TestExecuteCommand:
             timeout=30,
             capture_output=False,
             text=False,
-            env={"VAR": "value"}
+            env={"VAR": "value"},
         )
 
     @patch("subprocess.run")
     def test_execute_command_failure(self, mock_run):
         """Test command execution failure."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="error message"
+            returncode=1, stdout="", stderr="error message"
         )
 
         result = execute_command(["false"])
@@ -255,11 +239,7 @@ class TestExecuteCommand:
     def test_execute_command_with_logger(self, mock_run):
         """Test command execution with custom logger."""
         logger = MagicMock(spec=logging.Logger)
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="output",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="output", stderr="")
 
         result = execute_command(["ls"], logger=logger)
 
@@ -327,11 +307,13 @@ class TestValidateExecutableVersion:
         result = validate_executable_version("python")
 
         assert result == "Python 3.8.0"
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_check.assert_called_once()
         call_args = mock_check.call_args
         assert call_args[0][0] == "python"  # First arg is executable name
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_execute.assert_called_once()
         call_args = mock_execute.call_args
         assert call_args[0] == (["python", "--version"],)
@@ -345,7 +327,8 @@ class TestValidateExecutableVersion:
         result = validate_executable_version("nonexistent")
 
         assert result is None
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_check.assert_called_once()
         call_args = mock_check.call_args
         assert call_args[0][0] == "nonexistent"  # First arg is executable name
@@ -375,13 +358,12 @@ class TestValidateExecutableVersion:
         mock_execute.return_value = mock_result
 
         result = validate_executable_version(
-            "myprogram",
-            version_args=["-v"],
-            timeout=5
+            "myprogram", version_args=["-v"], timeout=5
         )
 
         assert result == "version 1.0"
-        # Logger will be created internally, so we check the call without comparing logger
+        # Logger will be created internally, so we check the call without
+        # comparing logger
         mock_execute.assert_called_once()
         call_args = mock_execute.call_args
         assert call_args[0] == (["myprogram", "-v"],)
@@ -416,9 +398,7 @@ class TestCreateOutputFilePath:
     def test_create_output_path_custom_directory(self):
         """Test creating output path in custom directory."""
         result = create_output_file_path(
-            "/path/to/input.xyz", 
-            "pdb", 
-            output_dir="/output"
+            "/path/to/input.xyz", "pdb", output_dir="/output"
         )
         expected = str(Path("/output/input.pdb").absolute())
         assert result == expected
@@ -432,9 +412,7 @@ class TestCreateOutputFilePath:
     def test_create_output_path_complex_filename(self):
         """Test creating output path with complex filename."""
         result = create_output_file_path(
-            "/path/to/molecule.conformer.xyz",
-            "sdf",
-            output_dir="/output"
+            "/path/to/molecule.conformer.xyz", "sdf", output_dir="/output"
         )
         expected = str(Path("/output/molecule.conformer.sdf").absolute())
         assert result == expected
@@ -454,11 +432,7 @@ class TestCreateOutputFilePath:
 
     def test_create_output_path_relative_output_dir(self):
         """Test creating output path with relative output directory."""
-        result = create_output_file_path(
-            "/path/input.xyz",
-            "pdb",
-            output_dir="output"
-        )
+        result = create_output_file_path("/path/input.xyz", "pdb", output_dir="output")
         # Should return absolute path
         assert Path(result).is_absolute()
         assert result.endswith("input.pdb")

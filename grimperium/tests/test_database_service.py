@@ -5,10 +5,8 @@ This module contains tests for database operations including
 CSV file handling, data persistence, and thread-safe operations.
 """
 
-import tempfile
 import pandas as pd
-from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 import pytest
 
 from grimperium.services import database_service
@@ -247,7 +245,6 @@ class TestDatabaseService:
     def test_concurrent_database_access_simulation(self, temp_csv_file):
         """Simulate concurrent access to database."""
         import threading
-        import time
 
         results = []
 

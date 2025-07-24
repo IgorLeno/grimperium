@@ -8,7 +8,7 @@ validating molecule lists using rich and questionary libraries.
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 
 import questionary
 from rich import print as rich_print
@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-from ..services import database_service, pubchem_service
+from ..services import database_service
 from ..services.pipeline_orchestrator import (
     process_single_molecule,
     get_molecule_smiles,
@@ -70,8 +70,11 @@ class InteractiveBatchWorkflow:
         """
         self.console.print(
             Panel.fit(
-                "[bold blue]🧪 Grimperium v2 - Gerenciador Interativo de Lotes[/bold blue]\n"
-                "[cyan]Criação e validação guiada de listas de moléculas[/cyan]",
+                (
+                    "[bold blue]🧪 Grimperium v2 - Gerenciador Interativo de Lotes"
+                    "[/bold blue]\n"
+                    "[cyan]Criação e validação guiada de listas de moléculas[/cyan]"
+                ),
                 border_style="blue",
             )
         )
@@ -147,7 +150,8 @@ class InteractiveBatchWorkflow:
 
         if not txt_files:
             rich_print(
-                f"[yellow]ℹ️  Nenhuma lista encontrada no diretório {self.lists_dir}[/yellow]"
+                f"[yellow]ℹ️  Nenhuma lista encontrada no diretório "
+                f"{self.lists_dir}[/yellow]"
             )
             rich_print(
                 "[yellow]   Redirecionando para criação de nova lista...[/yellow]"
@@ -176,7 +180,8 @@ class InteractiveBatchWorkflow:
 
             self.current_file = choice
             rich_print(
-                f"[green]✅ Lista carregada: {choice} ({len(self.molecules)} moléculas)[/green]"
+                f"[green]✅ Lista carregada: {choice} "
+                f"({len(self.molecules)} moléculas)[/green]"
             )
             return True
 
@@ -227,7 +232,8 @@ class InteractiveBatchWorkflow:
             elif action.startswith("(c)"):
                 if len(self.molecules) == 0:
                     rich_print(
-                        "[yellow]⚠️  A lista está vazia. Adicione pelo menos uma molécula.[/yellow]"
+                        "[yellow]⚠️  A lista está vazia. Adicione pelo menos uma "
+                        "molécula.[/yellow]"
                     )
                     continue
                 return True
@@ -313,7 +319,8 @@ class InteractiveBatchWorkflow:
             )
             if duplicate_count > 0:
                 rich_print(
-                    f"[yellow]ℹ️  {duplicate_count} moléculas duplicadas ignoradas[/yellow]"
+                    f"[yellow]ℹ️  {duplicate_count} moléculas duplicadas "
+                    f"ignoradas[/yellow]"
                 )
 
             # Clear previous validation state since list has changed
@@ -355,12 +362,14 @@ class InteractiveBatchWorkflow:
                 new_molecule = new_molecule.strip()
                 if new_molecule in self.molecules:
                     rich_print(
-                        f"[yellow]⚠️  A molécula '{new_molecule}' já existe na lista[/yellow]"
+                        f"[yellow]⚠️  A molécula '{new_molecule}' já existe na "
+                        f"lista[/yellow]"
                     )
                 else:
                     self.molecules[index] = new_molecule
                     rich_print(
-                        f"[green]✅ Molécula editada: {current_molecule} → {new_molecule}[/green]"
+                        f"[green]✅ Molécula editada: {current_molecule} → "
+                        f"{new_molecule}[/green]"
                     )
 
     def _remove_molecule(self) -> None:
@@ -442,7 +451,8 @@ class InteractiveBatchWorkflow:
             # Handle molecules that failed SMILES fetch
             if failed_smiles_fetch:
                 rich_print(
-                    f"[yellow]⚠️  Não foi possível obter SMILES para {len(failed_smiles_fetch)} moléculas:[/yellow]"
+                    f"[yellow]⚠️  Não foi possível obter SMILES para "
+                    f"{len(failed_smiles_fetch)} moléculas:[/yellow]"
                 )
                 for failed in failed_smiles_fetch:
                     rich_print(f"   • {failed}")
@@ -471,12 +481,14 @@ class InteractiveBatchWorkflow:
 
                     if not self.molecules:
                         rich_print(
-                            "[yellow]⚠️  Lista ficou vazia após remover moléculas sem SMILES[/yellow]"
+                            "[yellow]⚠️  Lista ficou vazia após remover moléculas sem "
+                            "SMILES[/yellow]"
                         )
                         return False
 
             rich_print(
-                f"[green]✅ SMILES obtido para {len(self.molecule_smiles_map)} moléculas[/green]"
+                f"[green]✅ SMILES obtido para {len(self.molecule_smiles_map)} "
+                f"moléculas[/green]"
             )
             return True
 
@@ -517,7 +529,8 @@ class InteractiveBatchWorkflow:
                 return True
 
             rich_print(
-                f"[yellow]⚠️  Encontradas {len(duplicates)} possíveis duplicatas:[/yellow]"
+                f"[yellow]⚠️  Encontradas {len(duplicates)} possíveis "
+                f"duplicatas:[/yellow]"
             )
             for dup in duplicates:
                 rich_print(f"   • {dup}")
@@ -538,7 +551,8 @@ class InteractiveBatchWorkflow:
                 # Mark all duplicates for overwrite
                 self.molecules_to_overwrite.update(duplicates)
                 rich_print(
-                    f"[green]✅ {len(duplicates)} moléculas marcadas para sobrescrever[/green]"
+                    f"[green]✅ {len(duplicates)} moléculas marcadas para "
+                    f"sobrescrever[/green]"
                 )
             elif choice == "Manter todas (pular duplicatas)":
                 # Remove duplicates from the list and SMILES mapping
@@ -559,7 +573,8 @@ class InteractiveBatchWorkflow:
             elif choice == "Escolher individualmente":
                 # Use clearer wording for individual selection
                 selected = questionary.checkbox(
-                    "Selecione as moléculas duplicadas que deseja PROCESSAR (as não selecionadas serão removidas):",
+                    "Selecione as moléculas duplicadas que deseja PROCESSAR "
+                    "(as não selecionadas serão removidas):",
                     choices=duplicates,
                 ).ask()
 
@@ -581,7 +596,8 @@ class InteractiveBatchWorkflow:
                     if overwrite_choice == "Sobrescrever (recalcular)":
                         self.molecules_to_overwrite.update(selected)
                         rich_print(
-                            f"[green]✅ {len(selected)} moléculas marcadas para sobrescrever[/green]"
+                            f"[green]✅ {len(selected)} moléculas marcadas para "
+                            f"sobrescrever[/green]"
                         )
                     else:
                         # Remove selected molecules from the list (don't process them)
@@ -603,20 +619,23 @@ class InteractiveBatchWorkflow:
                         self.molecule_smiles_map.pop(removed, None)
                         self.molecules_to_overwrite.discard(removed)
                     rich_print(
-                        f"[green]✅ {len(to_remove)} duplicatas removidas da lista[/green]"
+                        f"[green]✅ {len(to_remove)} duplicatas removidas da "
+                        f"lista[/green]"
                     )
 
                 # Check if list is empty after processing
                 if not self.molecules:
                     rich_print(
-                        "[yellow]⚠️  Lista ficou vazia após processar duplicatas[/yellow]"
+                        "[yellow]⚠️  Lista ficou vazia após processar "
+                        "duplicatas[/yellow]"
                     )
                     return False
 
                 # If no molecules were selected, inform user
                 if not selected:
                     rich_print(
-                        "[yellow]ℹ️  Nenhuma molécula selecionada - todas as duplicatas foram removidas[/yellow]"
+                        "[yellow]ℹ️  Nenhuma molécula selecionada - todas as "
+                        "duplicatas foram removidas[/yellow]"
                     )
 
             return True
@@ -664,12 +683,14 @@ class InteractiveBatchWorkflow:
 
         if not not_found:
             rich_print(
-                f"[green]✅ Todas as {found_count} moléculas encontradas no PubChem[/green]"
+                f"[green]✅ Todas as {found_count} moléculas encontradas no "
+                f"PubChem[/green]"
             )
             return True
 
         rich_print(
-            f"[yellow]⚠️  {len(not_found)} moléculas não encontradas no PubChem:[/yellow]"
+            f"[yellow]⚠️  {len(not_found)} moléculas não encontradas no "
+            f"PubChem:[/yellow]"
         )
         for nf in not_found:
             rich_print(f"   • {nf}")
@@ -697,12 +718,14 @@ class InteractiveBatchWorkflow:
 
             if not self.molecules:
                 rich_print(
-                    "[yellow]⚠️  Lista ficou vazia após remover moléculas não encontradas[/yellow]"
+                    "[yellow]⚠️  Lista ficou vazia após remover moléculas não "
+                    "encontradas[/yellow]"
                 )
                 return False
 
             rich_print(
-                f"[green]✅ Continuando com {len(self.molecules)} moléculas válidas[/green]"
+                f"[green]✅ Continuando com {len(self.molecules)} moléculas "
+                f"válidas[/green]"
             )
             return True
 
@@ -728,7 +751,8 @@ class InteractiveBatchWorkflow:
                     f.write(f"{molecule}\n")
 
             rich_print(
-                f"[blue]ℹ️  Moléculas não encontradas salvas em: {not_found_file}[/blue]"
+                f"[blue]ℹ️  Moléculas não encontradas salvas em: "
+                f"{not_found_file}[/blue]"
             )
 
         except Exception as e:
@@ -776,7 +800,8 @@ class InteractiveBatchWorkflow:
 
             rich_print(f"[green]✅ Lista final salva: {final_file.name}[/green]")
             rich_print(
-                f"[green]🚀 Iniciando processamento de {len(self.molecules)} moléculas...[/green]"
+                f"[green]🚀 Iniciando processamento de {len(self.molecules)} "
+                f"moléculas...[/green]"
             )
 
             # Start actual batch processing with progress bar
@@ -846,12 +871,14 @@ class InteractiveBatchWorkflow:
 
             if successful_count > 0:
                 rich_print(
-                    f"[green]🎉 Processamento concluído! {successful_count} moléculas processadas com sucesso.[/green]"
+                    f"[green]🎉 Processamento concluído! {successful_count} "
+                    f"moléculas processadas com sucesso.[/green]"
                 )
 
             if failed_count > 0:
                 rich_print(
-                    f"[yellow]⚠️  {failed_count} moléculas falharam no processamento. Verifique os logs para detalhes.[/yellow]"
+                    f"[yellow]⚠️  {failed_count} moléculas falharam no "
+                    f"processamento. Verifique os logs para detalhes.[/yellow]"
                 )
 
             return True

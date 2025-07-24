@@ -5,7 +5,6 @@ Tests all error handling utilities with proper mocking.
 """
 
 import logging
-import time
 import unittest.mock as mock
 from unittest.mock import MagicMock, patch
 
@@ -46,13 +45,17 @@ class TestErrorHandler:
         mock_format_error.return_value = {
             "message": "Test error",
             "error_code": "TEST_ERROR",
-            "details": {"detail": "value"}
+            "details": {"detail": "value"},
         }
 
-        result = handler.handle_error(error, context="test_function", return_value="default")
+        result = handler.handle_error(
+            error, context="test_function", return_value="default"
+        )
 
         assert result == "default"
-        logger.log.assert_called_once_with(logging.ERROR, "Grimperium error in test_function: Test error")
+        logger.log.assert_called_once_with(
+            logging.ERROR, "Grimperium error in test_function: Test error"
+        )
         logger.debug.assert_called_once()
 
     def test_handle_standard_error(self):
@@ -64,7 +67,9 @@ class TestErrorHandler:
         result = handler.handle_error(error, context="test_function", return_value=42)
 
         assert result == 42
-        logger.log.assert_called_once_with(logging.ERROR, "Unexpected error in test_function: Standard error")
+        logger.log.assert_called_once_with(
+            logging.ERROR, "Unexpected error in test_function: Standard error"
+        )
         logger.debug.assert_called_once_with("Exception details", exc_info=True)
 
     def test_handle_error_without_context(self):
@@ -76,7 +81,9 @@ class TestErrorHandler:
         result = handler.handle_error(error, return_value=None)
 
         assert result is None
-        logger.log.assert_called_once_with(logging.ERROR, "Unexpected error: No context error")
+        logger.log.assert_called_once_with(
+            logging.ERROR, "Unexpected error: No context error"
+        )
 
     def test_handle_error_custom_log_level(self):
         """Test error handling with custom log level."""
@@ -86,7 +93,9 @@ class TestErrorHandler:
         error = Warning("Just a warning")
         handler.handle_error(error, log_level=logging.WARNING)
 
-        logger.log.assert_called_once_with(logging.WARNING, "Unexpected error: Just a warning")
+        logger.log.assert_called_once_with(
+            logging.WARNING, "Unexpected error: Just a warning"
+        )
 
     @patch("grimperium.utils.error_handler.format_error_context")
     @patch("grimperium.utils.error_handler.time.time")
@@ -96,12 +105,12 @@ class TestErrorHandler:
         mock_format_error.return_value = {
             "message": "Test error",
             "error_code": "TEST_ERROR",
-            "details": {"detail": "value"}
+            "details": {"detail": "value"},
         }
 
         handler = ErrorHandler()
         error = GrimperiumError("Test error", "TEST_ERROR", {"detail": "value"})
-        
+
         response = handler.create_error_response(error, success=False)
 
         expected = {
@@ -109,9 +118,9 @@ class TestErrorHandler:
             "error": {
                 "message": "Test error",
                 "error_code": "TEST_ERROR",
-                "details": {"detail": "value"}
+                "details": {"detail": "value"},
             },
-            "timestamp": 1234567890.0
+            "timestamp": 1234567890.0,
         }
         assert response == expected
 
@@ -122,7 +131,7 @@ class TestErrorHandler:
 
         handler = ErrorHandler()
         error = ValueError("Standard error")
-        
+
         response = handler.create_error_response(error, success=True)
 
         expected = {
@@ -131,9 +140,9 @@ class TestErrorHandler:
                 "error_type": "ValueError",
                 "error_code": "UNKNOWN_ERROR",
                 "message": "Standard error",
-                "details": {}
+                "details": {},
             },
-            "timestamp": 1234567890.0
+            "timestamp": 1234567890.0,
         }
         assert response == expected
 
@@ -144,6 +153,7 @@ class TestRetryOnError:
     @patch("grimperium.utils.error_handler.time.sleep")
     def test_retry_success_first_attempt(self, mock_sleep):
         """Test successful function execution on first attempt."""
+
         @retry_on_error(max_attempts=3)
         def test_func():
             return "success"
@@ -177,6 +187,7 @@ class TestRetryOnError:
     @patch("grimperium.utils.error_handler.time.sleep")
     def test_retry_max_attempts_exceeded(self, mock_sleep):
         """Test failure after exceeding max attempts."""
+
         @retry_on_error(max_attempts=2, delay=0.1)
         def test_func():
             raise ValueError("Persistent failure")
@@ -190,6 +201,7 @@ class TestRetryOnError:
     @patch("grimperium.utils.error_handler.time.sleep")
     def test_retry_specific_exceptions(self, mock_sleep):
         """Test retrying only on specific exceptions."""
+
         @retry_on_error(max_attempts=3, exceptions=ValueError)
         def test_func_value_error():
             raise ValueError("Retry this")
@@ -227,6 +239,7 @@ class TestRetryOnError:
     @patch("grimperium.utils.error_handler.time.sleep")
     def test_retry_backoff_factor(self, mock_sleep):
         """Test backoff factor calculation."""
+
         @retry_on_error(max_attempts=4, delay=1.0, backoff_factor=3.0)
         def test_func():
             raise ValueError("Test error")
@@ -235,9 +248,9 @@ class TestRetryOnError:
             test_func()
 
         expected_calls = [
-            mock.call(1.0),   # First retry
-            mock.call(3.0),   # Second retry (1.0 * 3.0)
-            mock.call(9.0),   # Third retry (3.0 * 3.0)
+            mock.call(1.0),  # First retry
+            mock.call(3.0),  # Second retry (1.0 * 3.0)
+            mock.call(9.0),  # Third retry (3.0 * 3.0)
         ]
         mock_sleep.assert_has_calls(expected_calls)
 
@@ -270,9 +283,7 @@ class TestLogExceptions:
             test_func()
 
         logger.log.assert_called_once_with(
-            logging.ERROR,
-            "Exception in test_func: Test error",
-            exc_info=True
+            logging.ERROR, "Exception in test_func: Test error", exc_info=True
         )
 
     def test_log_exceptions_without_reraise(self):
@@ -287,9 +298,7 @@ class TestLogExceptions:
 
         assert result is None
         logger.log.assert_called_once_with(
-            logging.ERROR,
-            "Exception in test_func: Test error",
-            exc_info=True
+            logging.ERROR, "Exception in test_func: Test error", exc_info=True
         )
 
     def test_log_exceptions_custom_log_level(self):
@@ -304,13 +313,12 @@ class TestLogExceptions:
 
         assert result is None
         logger.log.assert_called_once_with(
-            logging.WARNING,
-            "Exception in test_func: Test warning",
-            exc_info=True
+            logging.WARNING, "Exception in test_func: Test warning", exc_info=True
         )
 
     def test_log_exceptions_default_logger(self):
         """Test decorator with default logger."""
+
         @log_exceptions(reraise=False)
         def test_func():
             raise ValueError("Test error")
@@ -335,7 +343,9 @@ class TestValidateAndConvert:
 
     def test_validate_string_empty_not_required(self):
         """Test validation of empty non-required string."""
-        result = validate_and_convert("", str, "field_name", required=False, default="default")
+        result = validate_and_convert(
+            "", str, "field_name", required=False, default="default"
+        )
         assert result == ""
 
     def test_validate_int_success(self):
@@ -376,7 +386,7 @@ class TestValidateAndConvert:
         """Test boolean validation with non-string values."""
         result = validate_and_convert(1, bool, "field_name")
         assert result is True
-        
+
         result = validate_and_convert(0, bool, "field_name")
         assert result is False
 
@@ -387,11 +397,14 @@ class TestValidateAndConvert:
 
     def test_validate_none_not_required(self):
         """Test validation success for None non-required value."""
-        result = validate_and_convert(None, str, "field_name", required=False, default="default")
+        result = validate_and_convert(
+            None, str, "field_name", required=False, default="default"
+        )
         assert result == "default"
 
     def test_validate_custom_type(self):
         """Test validation with custom type."""
+
         class CustomType:
             def __init__(self, value):
                 self.value = str(value)
@@ -402,6 +415,7 @@ class TestValidateAndConvert:
 
     def test_validate_custom_type_failure(self):
         """Test validation failure with custom type."""
+
         class FailingType:
             def __init__(self, value):
                 raise ValueError("Cannot create instance")
@@ -415,6 +429,7 @@ class TestSafeExecute:
 
     def test_safe_execute_success(self):
         """Test successful function execution."""
+
         def test_func(a, b):
             return a + b
 
@@ -423,6 +438,7 @@ class TestSafeExecute:
 
     def test_safe_execute_with_kwargs(self):
         """Test function execution with keyword arguments."""
+
         def test_func(a, b=10):
             return a * b
 
@@ -431,6 +447,7 @@ class TestSafeExecute:
 
     def test_safe_execute_failure_default_return(self):
         """Test function execution failure with default return value."""
+
         def test_func():
             raise ValueError("Test error")
 
@@ -449,7 +466,7 @@ class TestSafeExecute:
             test_func,
             default_return="default",
             error_handler=error_handler,
-            context="test_context"
+            context="test_context",
         )
 
         assert result == "handled"
@@ -457,6 +474,7 @@ class TestSafeExecute:
 
     def test_safe_execute_none_kwargs(self):
         """Test function execution with None kwargs."""
+
         def test_func():
             return "success"
 
@@ -465,6 +483,7 @@ class TestSafeExecute:
 
     def test_safe_execute_default_error_handler(self):
         """Test function execution with default error handler."""
+
         def test_func():
             raise ValueError("Test error")
 
