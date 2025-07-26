@@ -47,7 +47,9 @@ class TestStartupValidator:
     """Test the StartupValidator class."""
     
     def setup_method(self):
-        """Set up test fixtures."""
+        """
+        Initializes the test environment by creating a console, a StartupValidator instance, and a sample configuration dictionary for use in test cases.
+        """
         self.console = Console(file=None)  # Don't write to stdout during tests
         self.validator = StartupValidator(self.console)
         
@@ -110,7 +112,9 @@ class TestStartupValidator:
     
     @patch('grimperium.utils.startup_validator.__import__')
     def test_validate_python_dependencies_success(self, mock_import):
-        """Test Python dependencies validation - all packages available."""
+        """
+        Test that Python dependencies validation succeeds when all required packages are available.
+        """
         # Mock successful imports
         mock_import.return_value = MagicMock()
         
@@ -121,9 +125,25 @@ class TestStartupValidator:
     
     @patch('grimperium.utils.startup_validator.__import__')
     def test_validate_python_dependencies_missing(self, mock_import):
-        """Test Python dependencies validation - some packages missing."""
+        """
+        Test that the Python dependencies validation fails when some required packages are missing.
+        
+        Simulates missing packages by raising ImportError for certain dependencies and verifies that the validation result indicates failure with appropriate suggestions.
+        """
         # Mock failed imports for some packages
         def side_effect(package):
+            """
+            Simulates importing Python packages, returning a mock object for 'pandas' and 'typer', and raising ImportError for others.
+            
+            Parameters:
+                package (str): The name of the package to import.
+            
+            Returns:
+                MagicMock: A mock object if the package is 'pandas' or 'typer'.
+            
+            Raises:
+                ImportError: If the package is not 'pandas' or 'typer'.
+            """
             if package in ['pandas', 'typer']:
                 return MagicMock()
             else:
@@ -140,7 +160,9 @@ class TestStartupValidator:
     
     @patch('shutil.which')
     def test_validate_external_tools_success(self, mock_which):
-        """Test external tools validation - all tools available."""
+        """
+        Test that external tools validation succeeds when all required tools are available and functional.
+        """
         # Mock all tools as available
         mock_which.return_value = '/usr/bin/tool'
         
@@ -154,9 +176,20 @@ class TestStartupValidator:
     
     @patch('shutil.which')
     def test_validate_external_tools_missing(self, mock_which):
-        """Test external tools validation - some tools missing."""
+        """
+        Tests that the external tools validation correctly identifies and reports missing or non-functional tools, providing appropriate suggestions.
+        """
         # Mock some tools as missing
         def which_side_effect(tool):
+            """
+            Simulate the behavior of `shutil.which` for testing by returning a mock path for 'crest' and `None` for other tools.
+            
+            Parameters:
+                tool (str): The name of the tool to check.
+            
+            Returns:
+                str or None: The mock path to the tool if it is 'crest', otherwise `None`.
+            """
             if tool == 'crest':
                 return '/usr/bin/crest'
             else:
@@ -175,7 +208,11 @@ class TestStartupValidator:
             assert any("MOPAC" in suggestion for suggestion in result.suggestions)
     
     def test_validate_external_tools_no_config(self):
-        """Test external tools validation with missing configuration."""
+        """
+        Test that external tools validation fails when the executables configuration is missing.
+        
+        Verifies that the validator returns a failure result with an appropriate message when provided with an empty configuration dictionary.
+        """
         empty_config = {}
         
         result = self.validator._validate_external_tools(empty_config)
@@ -184,7 +221,9 @@ class TestStartupValidator:
         assert "No executables configuration found" in result.message
     
     def test_validate_directory_permissions_success(self):
-        """Test directory permissions validation - success case."""
+        """
+        Test that directory permissions validation succeeds when all specified directories are accessible.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create a config that uses the temporary directory
             config = {
@@ -204,7 +243,11 @@ class TestStartupValidator:
             assert "required directories are accessible" in result.message
     
     def test_validate_directory_permissions_failure(self):
-        """Test directory permissions validation - failure case."""
+        """
+        Test that directory permissions validation fails when directories are inaccessible.
+        
+        Verifies that the validator detects inaccessible or non-existent directories and returns a failed validation result with appropriate suggestions.
+        """
         # Use a non-existent parent directory that cannot be created
         config = {
             'repository_base_path': '/nonexistent/readonly/path',
@@ -221,7 +264,9 @@ class TestStartupValidator:
     
     @patch('grimperium.utils.startup_validator.execute_command')
     def test_get_tool_version_crest(self, mock_execute):
-        """Test getting version for CREST tool."""
+        """
+        Test that the CREST tool version is correctly retrieved when the command execution is successful.
+        """
         # Mock successful command execution
         mock_result = MagicMock()
         mock_result.success = True
@@ -235,7 +280,9 @@ class TestStartupValidator:
     
     @patch('grimperium.utils.startup_validator.execute_command')
     def test_get_tool_version_failure(self, mock_execute):
-        """Test getting version when tool fails."""
+        """
+        Test that retrieving a tool's version returns None when the command execution fails.
+        """
         # Mock failed command execution
         mock_result = MagicMock()
         mock_result.success = False
@@ -246,7 +293,9 @@ class TestStartupValidator:
         assert version is None
     
     def test_validate_environment_integration(self):
-        """Test the complete validate_environment method."""
+        """
+        Tests that the `validate_environment` method returns overall success and all individual results as successful when all validation steps are mocked to succeed.
+        """
         with patch.object(self.validator, '_validate_virtual_environment') as mock_venv, \
              patch.object(self.validator, '_validate_python_dependencies') as mock_deps, \
              patch.object(self.validator, '_validate_external_tools') as mock_tools, \
@@ -265,7 +314,11 @@ class TestStartupValidator:
             assert all(result.success for result in results)
     
     def test_validate_environment_failure(self):
-        """Test validate_environment with some failures."""
+        """
+        Test that validate_environment returns failure when some validation steps fail.
+        
+        Simulates mixed success and failure in environment validation steps and verifies that the overall result is failure with the correct count of failed results.
+        """
         with patch.object(self.validator, '_validate_virtual_environment') as mock_venv, \
              patch.object(self.validator, '_validate_python_dependencies') as mock_deps, \
              patch.object(self.validator, '_validate_external_tools') as mock_tools, \
@@ -306,7 +359,9 @@ class TestValidateStartupEnvironment:
             mock_validator.display_validation_results.assert_called_once()
     
     def test_validate_startup_environment_failure(self):
-        """Test the convenience function with failed validation."""
+        """
+        Test that the convenience function returns False and displays results when environment validation fails.
+        """
         sample_config = {'executables': {'crest': 'crest'}}
         
         with patch('grimperium.utils.startup_validator.StartupValidator') as mock_validator_class:
