@@ -17,7 +17,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .subprocess_utils import execute_command, validate_executable_version
+from .subprocess_utils import execute_command
 from ..constants import REQUIRED_EXECUTABLES, EXECUTABLE_VALIDATION_TIMEOUT
 
 
