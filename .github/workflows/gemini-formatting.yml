@@ -52,5 +52,5 @@ jobs:
         git add .
         git commit -m "style: auto-fix formatting (Black, isort)
 
-🤖 Correções automáticas de formatação aplicadas pelo Gemini Code Assist"
+        🤖 Correções automáticas de formatação aplicadas pelo Gemini Code Assist"
         git push
