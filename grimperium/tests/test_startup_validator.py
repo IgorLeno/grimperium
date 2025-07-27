@@ -5,8 +5,10 @@ Tests for the startup environment validation system.
 import os
 import sys
 import tempfile
-import shutil
-from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+import pytest
+from rich.console import Console
 from unittest.mock import patch, MagicMock
 
 import pytest
