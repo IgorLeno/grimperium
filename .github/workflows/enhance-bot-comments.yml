@@ -4,285 +4,91 @@ on:
   issue_comment:
     types: [created]
 
+concurrency:
+  group: enhance-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
-  enhance-comment:
-    # Only run on pull request comments
-    if: github.event.issue.pull_request
+  enhance-comments:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: read
-      issues: write
-    
+    if: |
+      github.event.issue.pull_request &&
+      (
+        contains(github.event.comment.user.login, 'coderabbitai') ||
+        contains(github.event.comment.user.login, 'codecov')
+      )
+      
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Enhance bot comment with code agent prompt
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            console.log('Starting bot comment enhancement...');
+    - name: Process CodeRabbit Comments
+      if: contains(github.event.comment.user.login, 'coderabbitai')
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = context.payload.comment.body;
+          
+          // Extrai informações do CodeRabbit
+          const summaryMatch = comment.match(/## Summary\s*\n(.*?)(?=\n##|\n---|\n\*\*|$)/s);
+          const summary = summaryMatch ? summaryMatch[1].trim() : '';
+          
+          // Gera prompt estruturado para uso local
+          const enhancedPrompt = `
+          ## 🤖 Resumo para Implementação Local
+          
+          **Baseado na análise do CodeRabbit:**
+          
+          ${summary}
+          
+          ### Arquivos Identificados
+          ${comment.match(/\`[^`]+\.py\`/g)?.join(', ') || 'Nenhum arquivo específico mencionado'}
+          
+          ### Próximos Passos para Terminal Local
+          1. Execute: \`pytest\` para verificar testes atuais
+          2. Execute: \`black . && flake8 .\` para verificar formatação
+          3. Analise os pontos levantados pelo CodeRabbit acima
+          4. Implemente as correções necessárias incrementalmente
+          
+          ### Comando Sugerido para Claude Code (Terminal)
+          Use este contexto para solicitar um plano de implementação detalhado.
+          `;
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: enhancedPrompt
+          });
+    
+    - name: Process Codecov Comments
+      if: contains(github.event.comment.user.login, 'codecov')
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = context.payload.comment.body;
+          
+          // Extrai informações de cobertura
+          const coveragePattern = /Coverage decreased.*by ([\d.]+%)/i;
+          const coverageMatch = comment.match(coveragePattern);
+          
+          if (coverageMatch) {
+            const enhancedPrompt = `
+            ## 📊 Alerta de Cobertura de Testes
             
-            // Configuration
-            const TARGET_BOTS = [
-              'codecov[bot]',
-              'codecov-commenter',
-              'coderabbit[bot]', 
-              'coderabbitai',
-              'github-actions[bot]', // For Claude code review action
-              'claude-code-action[bot]'
-            ];
+            **Cobertura diminuiu em ${coverageMatch[1]}**
             
-            const ENHANCEMENT_MARKER = '### 🤖 Code Agent Prompt';
+            ### Próximos Passos
+            1. Execute: \`pytest --cov=grimperium --cov-report=html\`
+            2. Abra: \`htmlcov/index.html\` para ver relatório detalhado
+            3. Identifique linhas não cobertas
+            4. Adicione testes para as funcionalidades descobertas
             
-            // Get comment details
-            const comment = context.payload.comment;
-            const commentAuthor = comment.user.login;
-            const commentBody = comment.body;
-            const commentId = comment.id;
+            ### Para Claude Code (Terminal)
+            Solicite: "Analise a cobertura de testes e sugira testes adicionais para as áreas descobertas"
+            `;
             
-            console.log(`Comment author: ${commentAuthor}`);
-            console.log(`Comment ID: ${commentId}`);
-            
-            // Check if comment is from a target bot
-            const isTargetBot = TARGET_BOTS.some(bot => 
-              commentAuthor.toLowerCase().includes(bot.toLowerCase().replace('[bot]', ''))
-            );
-            
-            if (!isTargetBot) {
-              console.log(`Comment author ${commentAuthor} is not a target bot. Skipping.`);
-              return;
-            }
-            
-            // Check if comment already has enhancement
-            if (commentBody.includes(ENHANCEMENT_MARKER)) {
-              console.log('Comment already enhanced. Skipping.');
-              return;
-            }
-            
-            console.log(`Processing comment from bot: ${commentAuthor}`);
-            
-            // Bot identification and parsing
-            function identifyBotType(author, body) {
-              if (author.includes('codecov')) return 'codecov';
-              if (author.includes('coderabbit')) return 'coderabbit';
-              if (author.includes('claude') || author.includes('github-actions')) {
-                // Check if it's Claude code review based on content
-                if (body.includes('Code quality') || body.includes('review') || body.includes('suggestion')) {
-                  return 'claude';
-                }
-              }
-              return 'unknown';
-            }
-            
-            // Parse different bot comment formats
-            function parseCodecovComment(body) {
-              const suggestions = [];
-              
-              // Look for coverage-related suggestions
-              const coveragePattern = /Coverage decreased.*by ([\d.]+%)/i;
-              const coverageMatch = body.match(coveragePattern);
-              
-              if (coverageMatch) {
-                suggestions.push({
-                  type: 'coverage',
-                  description: `Coverage decreased by ${coverageMatch[1]}. Consider adding tests.`,
-                  file: null,
-                  lines: null,
-                  code: null
-                });
-              }
-              
-              // Look for file-specific coverage info
-              const filePattern = /\|\s+([^\s]+\.py)\s+\|\s+[\d.]+%\s+\|\s+[\d.]+%\s+\|\s+([\d,\s-]+)\s+\|/g;
-              let fileMatch;
-              while ((fileMatch = filePattern.exec(body)) !== null) {
-                suggestions.push({
-                  type: 'file_coverage',
-                  description: `File ${fileMatch[1]} has missing coverage`,
-                  file: fileMatch[1],
-                  lines: fileMatch[2],
-                  code: null
-                });
-              }
-              
-              return suggestions;
-            }
-            
-            function parseCodeRabbitComment(body) {
-              const suggestions = [];
-              
-              // Look for file references and suggestions
-              const suggestionPattern = /## Summary[\s\S]*?(?=##|$)/i;
-              const suggestionMatch = body.match(suggestionPattern);
-              
-              // Look for specific file mentions
-              const filePattern = /`([^`]+\.py)`/g;
-              const files = [];
-              let fileMatch;
-              while ((fileMatch = filePattern.exec(body)) !== null) {
-                files.push(fileMatch[1]);
-              }
-              
-              // Look for code blocks
-              const codeBlockPattern = /```(?:python|py)?\n([\s\S]*?)```/g;
-              const codeBlocks = [];
-              let codeMatch;
-              while ((codeMatch = codeBlockPattern.exec(body)) !== null) {
-                codeBlocks.push(codeMatch[1].trim());
-              }
-              
-              if (suggestionMatch || files.length > 0) {
-                suggestions.push({
-                  type: 'code_review',
-                  description: suggestionMatch ? suggestionMatch[0].replace('## Summary', '').trim() : 'Code review suggestion',
-                  file: files[0] || null,
-                  lines: null,
-                  code: codeBlocks[0] || null
-                });
-              }
-              
-              return suggestions;
-            }
-            
-            function parseClaudeComment(body) {
-              const suggestions = [];
-              
-              // Look for specific suggestions in Claude's format
-              const sections = body.split(/(?=##|\*\*)/);
-              
-              for (const section of sections) {
-                // Look for file references
-                const filePattern = /`([^`]+\.py)`/g;
-                const files = [];
-                let fileMatch;
-                while ((fileMatch = filePattern.exec(section)) !== null) {
-                  files.push(fileMatch[1]);
-                }
-                
-                // Look for code blocks
-                const codeBlockPattern = /```(?:python|py)?\n([\s\S]*?)```/g;
-                const codeBlocks = [];
-                let codeMatch;
-                while ((codeMatch = codeBlockPattern.exec(section)) !== null) {
-                  codeBlocks.push(codeMatch[1].trim());
-                }
-                
-                // Look for line references
-                const linePattern = /line[s]?\s+(\d+(?:-\d+)?)/i;
-                const lineMatch = section.match(linePattern);
-                
-                if (files.length > 0 || codeBlocks.length > 0) {
-                  suggestions.push({
-                    type: 'claude_review',
-                    description: section.substring(0, 200).replace(/[#*]/g, '').trim() + '...',
-                    file: files[0] || null,
-                    lines: lineMatch ? lineMatch[1] : null,
-                    code: codeBlocks[0] || null
-                  });
-                }
-              }
-              
-              return suggestions;
-            }
-            
-            // Generate code agent prompt
-            function generatePrompt(botType, suggestions, prNumber) {
-              if (suggestions.length === 0) {
-                return `${ENHANCEMENT_MARKER}
-
-**CONTEXT:** A code review bot (${botType}) has provided feedback on this pull request.
-
-**TASK:** Please review the bot's suggestions above and implement any necessary changes.
-
-**PR:** #${prNumber}
-
----`;
-              }
-              
-              let prompt = `${ENHANCEMENT_MARKER}
-
-**CONTEXT:** A ${botType} bot has identified issues in this pull request that need attention.
-
-**TASK:** Please address the following suggestions:
-
-`;
-              
-              suggestions.forEach((suggestion, index) => {
-                prompt += `${index + 1}. **${suggestion.type.replace('_', ' ').toUpperCase()}**: ${suggestion.description}\n`;
-                
-                if (suggestion.file) {
-                  prompt += `   - **File:** \`${suggestion.file}\`\n`;
-                }
-                
-                if (suggestion.lines) {
-                  prompt += `   - **Lines:** ${suggestion.lines}\n`;
-                }
-                
-                if (suggestion.code) {
-                  prompt += `   - **Code:**\n   \`\`\`python\n   ${suggestion.code}\n   \`\`\`\n`;
-                }
-                
-                prompt += '\n';
-              });
-              
-              prompt += `**PR:** #${prNumber}
-
-**INSTRUCTIONS:** 
-1. Read the relevant files using the Read tool
-2. Implement the suggested changes
-3. Run any necessary tests or linting
-4. Ensure the changes address the bot's concerns
-
----`;
-              
-              return prompt;
-            }
-            
-            // Main processing logic
-            try {
-              const botType = identifyBotType(commentAuthor, commentBody);
-              console.log(`Identified bot type: ${botType}`);
-              
-              let suggestions = [];
-              
-              switch (botType) {
-                case 'codecov':
-                  suggestions = parseCodecovComment(commentBody);
-                  break;
-                case 'coderabbit':
-                  suggestions = parseCodeRabbitComment(commentBody);
-                  break;
-                case 'claude':
-                  suggestions = parseClaudeComment(commentBody);
-                  break;
-                default:
-                  console.log(`Unknown bot type: ${botType}. Creating generic prompt.`);
-              }
-              
-              console.log(`Found ${suggestions.length} suggestions`);
-              
-              // Generate the enhanced prompt
-              const prNumber = context.payload.issue.number;
-              const promptSection = generatePrompt(botType, suggestions, prNumber);
-              
-              // Update the comment
-              const enhancedBody = commentBody + '\n\n' + promptSection;
-              
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: commentId,
-                body: enhancedBody
-              });
-              
-              console.log('Successfully enhanced comment with code agent prompt');
-              
-            } catch (error) {
-              console.error('Error enhancing comment:', error);
-              // Don't fail the workflow - this is a nice-to-have feature
-            }
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: enhancedPrompt
+            });
+          }

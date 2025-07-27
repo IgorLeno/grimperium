@@ -1,0 +1,56 @@
+name: Gemini Formatting and Summary
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+concurrency:
+  group: gemini-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gemini-processing:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    permissions:
+      contents: write
+      pull-requests: write
+      
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+        
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+        
+    - name: Install Formatting Tools
+      run: |
+        pip install black flake8 isort
+        
+    - name: Auto-fix Formatting Issues
+      run: |
+        black grimperium/ tests/ main.py
+        isort grimperium/ tests/ main.py
+        
+    - name: Check for Changes
+      id: check-changes
+      run: |
+        git diff --quiet || echo "changes=true" >> $GITHUB_OUTPUT
+        
+    - name: Commit Formatting Fixes
+      if: steps.check-changes.outputs.changes == 'true'
+      run: |
+        git config --local user.email "gemini-assist@noreply.github.com"
+        git config --local user.name "Gemini Code Assist"
+        git add .
+        git commit -m "style: auto-fix formatting (Black, isort)
+
+🤖 Correções automáticas de formatação aplicadas pelo Gemini Code Assist"
+        git push

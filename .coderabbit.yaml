@@ -1,47 +1,49 @@
-# .coderabbit.yaml
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 language: "pt-BR"
+early_access: false
+tone_instructions: |
+  Você é um revisor especialista em Python, focado em qualidade de código, 
+  segurança e melhores práticas. Forneça feedback claro e conciso em português brasileiro.
 
 reviews:
   profile: "chill"
   request_changes_workflow: false
   high_level_summary: true
-  poem: false
   review_status: true
-  collapse_empty_files: true
+  collapse_walkthrough: false
+  
   auto_review:
     enabled: true
     drafts: false
+    base_branches: ["main", "develop"]
+    
+  path_instructions:
+    - path: "grimperium/**/*.py"
+      instructions: |
+        Revise código Python seguindo:
+        - PEP8 e convenções Python
+        - Validação Pydantic nos models
+        - Docstrings Google-style
+        - Type hints obrigatórios
+        - Tratamento de erros adequado
+        - Padrão de Service do projeto (BaseService)
+        - Logs estruturados com self.logger
+        
+    - path: "grimperium/tests/**/*.py"
+      instructions: |
+        Analise testes focando em:
+        - Cobertura adequada de cenários
+        - Uso correto de fixtures pytest
+        - Assertions específicas e claras
+        - Mocks apropriados para serviços externos
+        - Testes de edge cases e tratamento de erros
+        
+    - path: "config.yaml"
+      instructions: |
+        Valide configurações:
+        - Estrutura YAML válida
+        - Paths e executáveis corretos
+        - Configurações de segurança adequadas
 
 chat:
   auto_reply: true
-
-changed_files_summary:
-  enabled: true
-
-path_instructions:
-  - path: "grimperium/services/**/*.py"
-    instructions: |
-      Foque em:
-      - Padrões de service-oriented architecture
-      - Tratamento de erros adequado
-      - Logging estruturado
-      - Validação de dados com Pydantic
-  
-  - path: "grimperium/tests/**/*.py"
-    instructions: |
-      Verifique:
-      - Cobertura de testes adequada
-      - Mocks apropriados para dependências externas
-      - Casos de teste edge cases
-      - Estrutura de testes clara
-
-  - path: "**/*.py"
-    instructions: |
-      Analise:
-      - Conformidade com PEP 8
-      - Documentação com docstrings
-      - Type hints quando apropriado
-      - Performance e segurança
-
-ignore_draft_pr: true
-auto_title_update: false
