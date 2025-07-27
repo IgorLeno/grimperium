@@ -25,6 +25,14 @@ class ValidationResult:
     """Container for validation results with detailed feedback."""
     
     def __init__(self, success: bool, message: str, suggestions: Optional[List[str]] = None):
+        """
+        Initialize a ValidationResult instance representing the outcome of a validation check.
+        
+        Parameters:
+            success (bool): Indicates whether the validation was successful.
+            message (str): Descriptive message about the validation result.
+            suggestions (Optional[List[str]]): Optional list of suggestions for resolving validation failures.
+        """
         self.success = success
         self.message = message
         self.suggestions = suggestions or []
@@ -40,23 +48,24 @@ class StartupValidator:
     
     def __init__(self, console: Optional[Console] = None):
         """
-        Initialize the startup validator.
+        Initialize a StartupValidator instance with optional Rich console output.
         
-        Args:
-            console: Rich console for formatted output (creates one if None)
+        If no console is provided, a new Rich Console is created for formatted output.
         """
         self.console = console or Console()
         self.logger = logging.getLogger(__name__)
         
     def validate_environment(self, config: Dict[str, Any]) -> Tuple[bool, List[ValidationResult]]:
         """
-        Perform comprehensive environment validation.
+        Runs all startup environment validation checks and aggregates their results.
         
-        Args:
-            config: Configuration dictionary
-            
+        Performs sequential validation of the virtual environment, required Python dependencies, external computational chemistry tools, and directory permissions. Returns a tuple containing the overall success status and a list of detailed validation results.
+        
+        Parameters:
+            config (Dict[str, Any]): Configuration dictionary containing paths and settings for validation.
+        
         Returns:
-            Tuple of (overall_success, list_of_validation_results)
+            Tuple[bool, List[ValidationResult]]: A tuple where the first element indicates if all checks passed, and the second is a list of individual validation results.
         """
         results = []
         overall_success = True
@@ -89,10 +98,10 @@ class StartupValidator:
     
     def _validate_virtual_environment(self) -> ValidationResult:
         """
-        Validate that Python is running in a virtual environment.
+        Checks whether Python is running inside a recognized virtual environment.
         
         Returns:
-            ValidationResult with virtual environment status
+            ValidationResult: Indicates if a virtual environment is active, with details and suggestions if not detected.
         """
         try:
             # Check for conda environment
@@ -146,10 +155,10 @@ class StartupValidator:
     
     def _validate_python_dependencies(self) -> ValidationResult:
         """
-        Validate that required Python packages are installed.
+        Checks for the presence of required Python packages and identifies any that are missing.
         
         Returns:
-            ValidationResult with dependency status
+            ValidationResult: Indicates whether all dependencies are installed, and lists missing packages with installation suggestions if any are absent.
         """
         required_packages = [
             'pandas', 'typer', 'rich', 'pydantic', 'pyyaml', 'requests',
@@ -182,13 +191,9 @@ class StartupValidator:
     
     def _validate_external_tools(self, config: Dict[str, Any]) -> ValidationResult:
         """
-        Validate that external computational chemistry tools are available.
+        Checks that all required external computational chemistry tools are configured, available, and functional.
         
-        Args:
-            config: Configuration dictionary
-            
-        Returns:
-            ValidationResult with external tools status
+        If any tool is missing, misconfigured, or non-functional, returns a failed ValidationResult with actionable suggestions for installation or configuration.
         """
         executables = config.get('executables', {})
         
@@ -258,13 +263,13 @@ class StartupValidator:
     
     def _validate_directory_permissions(self, config: Dict[str, Any]) -> ValidationResult:
         """
-        Validate that required directories can be created and are writable.
+        Checks that all required directories exist or can be created and verifies write permissions for each.
         
-        Args:
-            config: Configuration dictionary
-            
+        Parameters:
+            config (Dict[str, Any]): Configuration dictionary specifying directory paths.
+        
         Returns:
-            ValidationResult with directory permissions status
+            ValidationResult: Result indicating whether all directories are accessible and writable, with suggestions if issues are found.
         """
         try:
             directories_to_check = []
@@ -327,14 +332,14 @@ class StartupValidator:
     
     def _get_tool_version(self, tool_name: str, tool_path: str) -> Optional[str]:
         """
-        Get version information for a computational chemistry tool.
+        Attempts to retrieve the version string for a specified computational chemistry tool executable.
         
-        Args:
-            tool_name: Name of the tool (crest, mopac, obabel)
-            tool_path: Path to the tool executable
-            
+        Parameters:
+            tool_name (str): The name of the tool ('crest', 'mopac', or 'obabel').
+            tool_path (str): The path to the tool's executable.
+        
         Returns:
-            Version string if successful, None otherwise
+            Optional[str]: The version string if successfully extracted, "Available" if the tool responds but version is not found, or None if the tool is unavailable or an error occurs.
         """
         try:
             if tool_name == 'crest':
@@ -380,12 +385,10 @@ class StartupValidator:
     def display_validation_results(self, results: List[ValidationResult], 
                                   show_suggestions: bool = True) -> None:
         """
-        Display validation results in a formatted table.
-        
-        Args:
-            results: List of validation results
-            show_suggestions: Whether to show suggestions for failed validations
-        """
+                                  Displays the results of environment validation checks in a formatted table using Rich.
+                                  
+                                  If any validations fail and suggestions are available, presents actionable guidance in a highlighted panel. Suggestions are shown only if `show_suggestions` is True.
+                                  """
         # Create main results table
         table = Table(title="🔍 Grimperium Environment Validation Report")
         table.add_column("Check", style="bold", width=25)
@@ -424,15 +427,16 @@ class StartupValidator:
 def validate_startup_environment(config: Dict[str, Any], 
                                console: Optional[Console] = None) -> bool:
     """
-    Convenience function to validate startup environment.
-    
-    Args:
-        config: Configuration dictionary
-        console: Rich console for output
-        
-    Returns:
-        True if all validations pass, False otherwise
-    """
+                               Performs a comprehensive validation of the Grimperium startup environment and displays the results.
+                               
+                               Runs all environment checks using the provided configuration and outputs formatted feedback. Returns True if all validations succeed, otherwise False.
+                               
+                               Parameters:
+                                   config (Dict[str, Any]): Application configuration containing paths and tool settings.
+                               
+                               Returns:
+                                   bool: True if all environment checks pass; False otherwise.
+                               """
     validator = StartupValidator(console)
     success, results = validator.validate_environment(config)
     

@@ -52,7 +52,12 @@ app = typer.Typer(
 
 
 def setup_logging(verbose: bool = False):
-    """Setup logging configuration based on verbosity level."""
+    """
+    Configure the logging system with a format and level based on verbosity.
+    
+    Parameters:
+        verbose (bool): If True, sets the logging level to DEBUG; otherwise, INFO.
+    """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
@@ -63,19 +68,15 @@ def setup_logging(verbose: bool = False):
 
 def validate_environment_and_config(config_file: str) -> Optional[Dict[str, Any]]:
     """
-    Load configuration and validate the complete startup environment.
+    Loads the configuration file and performs a comprehensive validation of the startup environment.
     
-    This function performs comprehensive environment validation including:
-    - Virtual environment detection
-    - Python dependencies check
-    - External tools validation
-    - Directory permissions check
+    This includes checking for a virtual environment, required Python dependencies, external tool availability, and directory permissions. Prints detailed status messages to the console.
     
-    Args:
-        config_file: Path to configuration file
-        
+    Parameters:
+        config_file (str): Path to the configuration file.
+    
     Returns:
-        Configuration dictionary if validation passes, None otherwise
+        Optional[Dict[str, Any]]: The loaded configuration dictionary if validation succeeds; otherwise, None.
     """
     console.print(Panel.fit(
         "[bold yellow]🔍 Grimperium Environment Validation[/bold yellow]\n"
@@ -109,16 +110,16 @@ def _execute_single_molecule_logic(
     identifier: str, identifier_type: str, config_file: str, verbose: bool = False
 ) -> bool:
     """
-    Execute single molecule processing logic.
-
-    Args:
-        identifier: Molecule identifier (name or SMILES)
-        identifier_type: Type of identifier ("name" or "SMILES")
-        config_file: Path to configuration file
-        verbose: Enable verbose output
-
+    Processes a single molecule using the specified identifier and configuration.
+    
+    Parameters:
+        identifier (str): The molecule's name or SMILES string.
+        identifier_type (str): Specifies whether the identifier is a "name" or "SMILES".
+        config_file (str): Path to the configuration file.
+        verbose (bool, optional): If True, enables verbose output.
+    
     Returns:
-        bool: True if processing was successful, False otherwise
+        bool: True if the molecule was processed successfully; False otherwise.
     """
     setup_logging(verbose)
 
@@ -162,15 +163,15 @@ def _execute_batch_logic(
     file_path: str, config_file: str, verbose: bool = False
 ) -> dict:
     """
-    Execute batch processing logic.
-
-    Args:
-        file_path: Path to file containing molecule identifiers
-        config_file: Path to configuration file
-        verbose: Enable verbose output
-
+    Process a batch of molecules from a file, running workflow automation for each and reporting results.
+    
+    Parameters:
+        file_path (str): Path to the file containing molecule identifiers, one per line.
+        config_file (str): Path to the configuration file.
+        verbose (bool, optional): If True, enables detailed error output for failed molecules.
+    
     Returns:
-        dict: Processing results with counts
+        dict: A summary of batch processing results, including total, successful, failed counts, and success percentage. If an error occurs before processing, returns a dictionary with an "error" key and message.
     """
     setup_logging(verbose)
 
@@ -281,13 +282,9 @@ def _execute_batch_logic(
 
 def _execute_info_logic(config_file: str) -> bool:
     """
-    Execute system info display logic with comprehensive environment validation.
-
-    Args:
-        config_file: Path to configuration file
-
-    Returns:
-        bool: True if info was displayed successfully
+    Displays basic system information and performs comprehensive environment validation.
+    
+    Shows operating system, Python version, and project root, then loads the specified configuration file and runs environment checks. Prints a summary panel indicating system readiness or required configuration. Returns True if information was displayed and validation completed.
     """
     console.print(Panel.fit(
         "[bold blue]🧪 Grimperium v2 - System Diagnostics[/bold blue]",
@@ -351,15 +348,15 @@ def _execute_report_logic(
     config_file: str, detailed: bool = False, missing: int = 0
 ) -> bool:
     """
-    Execute progress report generation logic.
-
-    Args:
-        config_file: Path to configuration file
-        detailed: Show detailed analysis
-        missing: Number of missing molecules to show
-
+    Generates and displays a progress report on the status of reference and calculated molecule databases.
+    
+    Parameters:
+        config_file (str): Path to the configuration file.
+        detailed (bool): If True, includes a detailed analysis of each database.
+        missing (int): If greater than zero, lists up to this many molecules that still require calculation.
+    
     Returns:
-        bool: True if report was generated successfully
+        bool: True if the report was generated and displayed successfully; False if configuration or environment validation fails, or if report generation encounters an error.
     """
     console.print(Panel.fit(
         "[bold blue]🧪 Grimperium v2 - Progress Report[/bold blue]",
@@ -851,7 +848,9 @@ def interactive_menu():
 
 def handle_single_molecule():
     """
-    Handle single molecule processing through interactive prompts.
+    Interactively prompts the user to process a single molecule by chemical name or SMILES string.
+    
+    Guides the user through selecting the input type, entering the molecule identifier, and initiates processing. Displays error messages on failure and waits for user confirmation before returning to the menu.
     """
     console.print(Panel.fit(
         "[bold green]🧪 Processar Uma Única Molécula[/bold green]",
@@ -949,7 +948,9 @@ def handle_batch_molecules():
 
 def handle_system_info():
     """
-    Handle system information display.
+    Displays system information and environment validation results, then waits for user input before returning to the menu.
+    
+    Prints error messages if system information retrieval fails.
     """
     try:
         success = _execute_info_logic(config_file='config.yaml')
