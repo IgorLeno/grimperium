@@ -1,0 +1,40 @@
+# Configuração adicional para garantir que CodeRabbit seja READ-ONLY
+# Esta configuração reforça as restrições definidas em .coderabbit.yaml
+
+# Desabilitar TODAS as funcionalidades de escrita
+features:
+  code_suggestions: false
+  auto_commit: false
+  auto_merge: false
+  auto_fix: false
+  pull_request_creation: false
+  branch_creation: false
+  file_modifications: false
+
+# Modo estritamente read-only
+mode: "review-only"
+
+# Permissões explicitamente negadas
+permissions:
+  write: false
+  commit: false
+  push: false
+  merge: false
+  create_branches: false
+  create_pull_requests: false
+
+# Apenas comentários de revisão permitidos
+allowed_actions:
+  - "comment"
+  - "review"
+  - "analyze"
+
+# Proibir ações de modificação
+forbidden_actions:
+  - "commit"
+  - "push"
+  - "merge"
+  - "create_branch"
+  - "create_pr"
+  - "modify_files"
+  - "suggest_changes"

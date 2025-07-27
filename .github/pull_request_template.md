@@ -20,18 +20,21 @@
 
 ## 🤖 Fluxo de Review Automatizado
 
-### **CodeRabbit**: Revisor Principal
-- ✅ Análise automática de código em português
-- ✅ Verificação de padrões Python e Pydantic
-- ✅ Validação de arquitetura de services
+### **CodeRabbit**: Revisor Read-Only 📋
+- ✅ **APENAS REVISÃO**: Análise de código em português
+- ✅ **FEEDBACK TEXTUAL**: Sugestões e comentários
+- ❌ **NÃO FAZ**: Commits, branches, alterações de código
+- 🎯 **Função**: Identificar problemas e sugerir melhorias
 
-### **Gemini Code Assist**: Formatação Automática  
-- ✅ Correções automáticas de formatação (Black, isort)
-- ✅ Aplicação apenas quando necessário
+### **Gemini Code Assist**: Formatação Automática 🔧
+- ✅ **AUTO-CORREÇÃO**: Formatação (Black, isort) quando necessário
+- ✅ **COMMITS AUTOMÁTICOS**: Apenas para formatação
+- 🎯 **Função**: Manter consistência de estilo
 
-### **Claude Code**: Implementação Local
-- 🔧 Use no terminal para implementar correções sugeridas
-- 📋 Consulte os prompts estruturados gerados pelos bots
+### **Claude Code**: Implementação Manual 💻
+- 🔧 **USO LOCAL**: Terminal para implementar correções
+- 📋 **PROMPTS ESTRUTURADOS**: Baseados no feedback dos bots
+- 🎯 **Função**: Implementação das sugestões de revisão
 
 ## 📊 Comandos de Verificação Local
 

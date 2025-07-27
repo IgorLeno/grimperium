@@ -1,0 +1,8 @@
+# CODEOWNERS - Controle de permissões de escrita
+# O CodeRabbit NÃO deve ter permissões de escrita em nenhum arquivo
+
+# Todos os arquivos requerem aprovação do proprietário
+* @IgorLeno
+
+# CodeRabbit pode apenas comentar, nunca modificar arquivos
+# Esta configuração garante que apenas humanos podem fazer commits

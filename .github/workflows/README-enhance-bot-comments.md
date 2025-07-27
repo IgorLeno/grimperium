@@ -10,9 +10,10 @@ The `enhance-bot-comments.yml` workflow automatically enhances comments from rev
 - **Event**: `issue_comment` with `created` activity type
 - **Condition**: Only processes comments on pull requests
 - **Target Bots**: 
-  - `codecov[bot]` / `codecov-commenter`
-  - `coderabbit[bot]` / `coderabbitai` 
-  - `github-actions[bot]` / `claude-code-action[bot]`
+  - `codecov[bot]` / `codecov-commenter` (cobertura de testes)
+  - `coderabbit[bot]` / `coderabbitai` (revisão READ-ONLY)
+  
+**⚠️ IMPORTANTE**: CodeRabbit configurado como SOMENTE LEITURA - não faz commits ou alterações
 
 ### Process Flow
 

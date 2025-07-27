@@ -3,7 +3,8 @@ language: "pt-BR"
 early_access: false
 tone_instructions: |
   Você é um revisor especialista em Python, focado em qualidade de código, 
-  segurança e melhores práticas. Forneça feedback claro e conciso em português brasileiro.
+  segurança e melhores práticas. Forneça APENAS feedback e sugestões de revisão.
+  NUNCA faça commits, alterações em código ou crie branches.
 
 reviews:
   profile: "chill"
@@ -12,10 +13,16 @@ reviews:
   review_status: true
   collapse_walkthrough: false
   
+  # Configurações restritivas para APENAS revisão
   auto_review:
     enabled: true
     drafts: false
     base_branches: ["main", "develop"]
+  
+  # Desabilitar todas as ações automáticas de código
+  auto_commit: false
+  auto_merge: false
+  auto_fix: false
     
   path_instructions:
     - path: "grimperium/**/*.py"
@@ -45,5 +52,24 @@ reviews:
         - Paths e executáveis corretos
         - Configurações de segurança adequadas
 
+# Configurações restritivas para modo read-only
+actions:
+  # Desabilitar TODAS as ações que modificam código
+  suggest_code_changes: false
+  create_pull_requests: false
+  commit_changes: false
+  merge_pull_requests: false
+  approve_pull_requests: false
+  
+# Configurações de chat limitadas
 chat:
   auto_reply: true
+  # Limitar apenas a comentários de revisão
+  allowed_commands: ["explain", "summary"]
+  
+# Configurações de permissões
+permissions:
+  read_only: true
+  can_commit: false
+  can_push: false
+  can_create_branches: false
