@@ -1,0 +1,58 @@
+# CodeQL Configuration for Grimperium
+# Enhanced security analysis for computational chemistry applications
+
+name: "Grimperium CodeQL Config"
+
+# Disable default queries and use custom ones
+disable-default-queries: false
+
+# Additional query packs for Python security
+queries:
+  - uses: security-and-quality
+  - uses: security-extended
+  
+# Custom queries for computational chemistry security
+query-filters:
+  # Focus on high and medium severity issues
+  - exclude:
+      id: 
+        - "py/redundant-import"
+        - "py/unused-import"
+  
+  # Include specific security patterns
+  - include:
+      tags: 
+        - "security"
+        - "external/cwe/cwe-078"  # OS command injection
+        - "external/cwe/cwe-089"  # SQL injection
+        - "external/cwe/cwe-094"  # Code injection
+        - "external/cwe/cwe-295"  # Certificate validation
+        - "external/cwe/cwe-377"  # Insecure temporary files
+
+# Paths to analyze
+paths:
+  - "grimperium/"
+  - "main.py"
+  - "tests/"
+
+# Paths to ignore
+paths-ignore:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/*.yml" 
+  - "**/*.yaml"
+  - ".github/"
+  - "docs/"
+  - "data/"
+  - "repository/"
+  - "logs/"
+  
+# Custom build commands for dependencies
+build-command: |
+  pip install --upgrade pip
+  if [ -f requirements.txt ]; then
+    pip install -r requirements.txt
+  fi
+
+# External library configuration
+external-repository-token-stdin: false

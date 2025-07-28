@@ -1,16 +1,88 @@
-# .github/labeler.yml
-"bot: claude-code":
-  - "grimperium/services/**/*.py"
+# GitHub Labeler Configuration
+# Automatically applies labels based on file paths in PRs
+
+# Core code changes
+"core":
   - "grimperium/core/**/*.py"
+  - "grimperium/core/**"
 
-"bot: gemini-docs":
-  - "docs/**/*"
-  - "README.md"
-  - "*.md"
+# Service layer changes  
+"services":
+  - "grimperium/services/**/*.py"
+  - "grimperium/services/**"
 
-"coverage: check":
+# Utilities and helpers
+"utilities":
+  - "grimperium/utils/**/*.py"
+  - "grimperium/utils/**"
+
+# Testing related
+"tests":
+  - "tests/**/*.py"
   - "grimperium/tests/**/*.py"
-  - "grimperium/**/*.py"
+  - "**/test_*.py"
+  - "**/*_test.py"
 
-"review: coderabbit":
-  - "**/*.py"
+# Configuration changes
+"configuration":
+  - "config.yaml"
+  - "config/*.yaml"
+  - "config/*.yml"
+  - "*.toml"
+  - "*.ini"
+
+# Documentation
+"documentation":
+  - "**/*.md"
+  - "docs/**"
+  - "**/*.rst"
+  - "CLAUDE.md"
+  - "README*"
+
+# CI/CD and workflows
+"ci/cd":
+  - ".github/workflows/**"
+  - ".github/actions/**"
+  - "docker-compose*.yml"
+  - "Dockerfile*"
+
+# Dependencies
+"dependencies":
+  - "requirements*.txt"
+  - "setup.py"
+  - "pyproject.toml"
+  - "Pipfile*"
+
+# Entry points
+"cli":
+  - "main.py"
+  - "grimperium/__main__.py"
+  - "grimperium/cli/**"
+
+# Data and database
+"data":
+  - "data/**"
+  - "**/*.csv"
+  - "**/*.json"
+  - "**/*.sql"
+
+# Chemistry specific
+"chemistry":
+  - "grimperium/services/pubchem_service.py"
+  - "grimperium/services/calculation_service.py"
+  - "grimperium/services/conversion_service.py"
+  - "grimperium/core/molecule.py"
+
+# Hot paths (critical files)
+"critical":
+  - "main.py"
+  - "config.yaml"
+  - "grimperium/__init__.py"
+  - "grimperium/services/pipeline_orchestrator.py"
+
+# Security sensitive
+"security":
+  - ".github/workflows/**"
+  - "scripts/**"
+  - "**/*security*"
+  - "**/*auth*"

@@ -1,0 +1,364 @@
+name: 🤖 Bot Management & Security
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: bot-mgmt-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Centralized bot authorization check
+  bot-authorization:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      bot-type: ${{ steps.classify.outputs.type }}
+      authorized: ${{ steps.classify.outputs.authorized }}
+      action-needed: ${{ steps.classify.outputs.action }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+          
+      - name: Classify bot and authorization
+        id: classify
+        run: |
+          echo "🔍 Analyzing bot activity..."
+          
+          # Initialize variables
+          ACTOR="${{ github.actor }}"
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.email || 'unknown' }}"
+          COMMENT_USER="${{ github.event.comment.user.login || 'unknown' }}"
+          EVENT_TYPE="${{ github.event_name }}"
+          
+          echo "Event: $EVENT_TYPE"
+          echo "Actor: $ACTOR"
+          echo "Commit Author: $COMMIT_AUTHOR"
+          echo "Comment User: $COMMENT_USER"
+          
+          # Define authorized bots
+          AUTHORIZED_BOTS="gemini-assist@noreply.github.com|dependabot\[bot\]|renovate\[bot\]"
+          FORBIDDEN_BOTS="coderabbitai|claude-code|codecov-commenter"
+          
+          # Classification logic
+          if [[ "$ACTOR" =~ ^(dependabot|renovate)\[bot\]$ ]]; then
+            echo "type=dependency-bot" >> $GITHUB_OUTPUT
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "action=allow" >> $GITHUB_OUTPUT
+            
+          elif [[ "$COMMIT_AUTHOR" =~ gemini-assist@noreply\.github\.com ]]; then
+            echo "type=formatting-bot" >> $GITHUB_OUTPUT
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "action=allow" >> $GITHUB_OUTPUT
+            
+          elif [[ "$COMMENT_USER" =~ coderabbitai|codecov ]]; then
+            echo "type=review-bot" >> $GITHUB_OUTPUT
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "action=enhance-comment" >> $GITHUB_OUTPUT
+            
+          elif [[ "$ACTOR" =~ $FORBIDDEN_BOTS ]] || [[ "$COMMIT_AUTHOR" =~ $FORBIDDEN_BOTS ]]; then
+            echo "type=forbidden-bot" >> $GITHUB_OUTPUT
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "action=block" >> $GITHUB_OUTPUT
+            
+          else
+            echo "type=human" >> $GITHUB_OUTPUT
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            echo "action=allow" >> $GITHUB_OUTPUT
+          fi
+
+  # Block unauthorized bot commits
+  block-unauthorized:
+    runs-on: ubuntu-latest
+    needs: bot-authorization
+    if: needs.bot-authorization.outputs.authorized == 'false'
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Block unauthorized bot activity
+        run: |
+          echo "🚨 BLOCKING UNAUTHORIZED BOT ACTIVITY"
+          echo "Bot Type: ${{ needs.bot-authorization.outputs.bot-type }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
+          
+          echo "❌ This bot is not authorized to perform actions in this repository."
+          echo "✅ Authorized bots: Dependabot, Renovate, Gemini Code Assist"
+          echo "🚫 Forbidden bots: CodeRabbit, Claude Code, Direct commit bots"
+          
+          exit 1
+          
+      - name: Create blocking comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚨 **Bot Authorization Failure**
+              
+              The bot \`${{ github.actor }}\` is not authorized to make commits or changes to this repository.
+              
+              **Authorized bots:**
+              - ✅ Dependabot (dependency updates)
+              - ✅ Renovate (dependency updates) 
+              - ✅ Gemini Code Assist (formatting)
+              
+              **Action required:**
+              1. Review the commit history
+              2. Remove unauthorized bot commits
+              3. Verify bot permissions
+              
+              This PR cannot be merged until the issue is resolved.`
+            });
+
+  # Auto-formatting with safety checks
+  auto-format:
+    runs-on: ubuntu-latest
+    needs: bot-authorization
+    if: |
+      github.event_name == 'pull_request' && 
+      github.event.pull_request.draft == false &&
+      needs.bot-authorization.outputs.authorized == 'true' &&
+      !contains(github.event.pull_request.labels.*.name, 'no-auto-format')
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+          
+      - name: Install formatting tools
+        run: |
+          pip install black isort
+          
+      - name: Check if formatting needed
+        id: format-check
+        run: |
+          echo "🎨 Checking if formatting is needed..."
+          
+          # Check if any Python files need formatting
+          if ! black --check --diff grimperium/ tests/ main.py 2>/dev/null; then
+            echo "needs-formatting=true" >> $GITHUB_OUTPUT
+            echo "Black formatting needed"
+          elif ! isort --check-only --diff grimperium/ tests/ main.py 2>/dev/null; then
+            echo "needs-formatting=true" >> $GITHUB_OUTPUT
+            echo "Import sorting needed"
+          else
+            echo "needs-formatting=false" >> $GITHUB_OUTPUT
+            echo "No formatting needed"
+          fi
+          
+      - name: Apply formatting
+        if: steps.format-check.outputs.needs-formatting == 'true'
+        run: |
+          echo "🔧 Applying automatic formatting..."
+          
+          black grimperium/ tests/ main.py
+          isort grimperium/ tests/ main.py
+          
+      - name: Check for changes
+        id: changes
+        if: steps.format-check.outputs.needs-formatting == 'true'
+        run: |
+          if git diff --quiet; then
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Commit formatting changes
+        if: steps.changes.outputs.has-changes == 'true'
+        run: |
+          git config --local user.email "gemini-assist@noreply.github.com"
+          git config --local user.name "Gemini Code Assist"
+          
+          git add .
+          git commit -m "style: auto-fix formatting (black, isort)
+
+          🤖 Automatic formatting applied by Gemini Code Assist
+          
+          Changes:
+          - Applied Black code formatting
+          - Organized imports with isort
+          - Ensured consistent code style
+          
+          This is an automated commit that improves code readability
+          without changing functionality."
+          
+          git push
+
+  # Enhanced comment processing
+  enhance-comments:
+    runs-on: ubuntu-latest
+    needs: bot-authorization
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      needs.bot-authorization.outputs.action == 'enhance-comment'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Process CodeRabbit comments
+        if: contains(github.event.comment.user.login, 'coderabbitai')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            
+            // Extract key information from CodeRabbit
+            const summaryMatch = comment.match(/## Summary\s*\n(.*?)(?=\n##|\n---|\n\*\*|$)/s);
+            const summary = summaryMatch ? summaryMatch[1].trim() : 'No summary provided';
+            
+            const filesChanged = comment.match(/\`[^`]+\.(py|yml|yaml|json|md)\`/g) || [];
+            const uniqueFiles = [...new Set(filesChanged)];
+            
+            // Generate actionable enhancement
+            const enhancedPrompt = `## 🤖 CodeRabbit Analysis - Action Required
+            
+            **AI Analysis Summary:**
+            ${summary}
+            
+            ### 📁 Files Requiring Attention
+            ${uniqueFiles.length > 0 ? uniqueFiles.join(', ') : 'Multiple files identified in original comment'}
+            
+            ### 🚀 Recommended Local Actions
+            
+            1. **Code Quality Check:**
+               \`\`\`bash
+               # Run complete quality check
+               python main.py info  # System validation
+               black grimperium/ tests/ main.py
+               flake8 grimperium/ tests/ main.py
+               isort grimperium/ tests/ main.py
+               \`\`\`
+            
+            2. **Testing & Validation:**
+               \`\`\`bash
+               # Run tests with coverage
+               pytest --cov=grimperium --cov-report=html
+               python main.py run-single --name "ethanol"  # Test basic functionality
+               \`\`\`
+            
+            3. **Review Original Issues:**
+               - Check the detailed CodeRabbit comment above
+               - Address specific suggestions incrementally
+               - Test each change before proceeding
+            
+            ### 💡 Claude Code Integration
+            Copy this context and ask: *"Analyze the CodeRabbit feedback and create an implementation plan to address the identified issues while maintaining code quality and project patterns."*
+            
+            ---
+            *Generated by Bot Management System - Enhanced comment processing*`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: enhancedPrompt
+            });
+      
+      - name: Process Codecov comments
+        if: contains(github.event.comment.user.login, 'codecov')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            
+            // Extract coverage information
+            const coveragePattern = /Coverage (?:decreased|increased).*?by ([\d.]+%)|Coverage: ([\d.]+%)/i;
+            const coverageMatch = comment.match(coveragePattern);
+            const coverage = coverageMatch ? (coverageMatch[1] || coverageMatch[2]) : 'Unknown';
+            
+            const enhancedPrompt = `## 📊 Test Coverage Analysis
+            
+            **Current Coverage:** ${coverage}
+            
+            ### 🎯 Coverage Improvement Actions
+            
+            1. **Generate Coverage Report:**
+               \`\`\`bash
+               pytest --cov=grimperium --cov-report=html --cov-report=term-missing
+               open htmlcov/index.html  # View detailed report
+               \`\`\`
+            
+            2. **Identify Missing Coverage:**
+               \`\`\`bash
+               # Find untested lines
+               grep -n "Missing" htmlcov/*.html | head -20
+               \`\`\`
+            
+            3. **Strategic Testing Approach:**
+               - Focus on core business logic in \`grimperium/services/\`
+               - Add integration tests for pipeline workflows
+               - Test error handling and edge cases
+               - Mock external dependencies (CREST, MOPAC)
+            
+            4. **Quality Gates:**
+               - Maintain minimum 80% coverage
+               - Ensure all new code has tests
+               - Test both success and failure paths
+            
+            ### 🔬 For Claude Code Analysis
+            Request: *"Review current test coverage, identify critical untested areas in the computational chemistry pipeline, and suggest comprehensive test scenarios for the missing coverage."*
+            
+            ---
+            *Automated coverage analysis and improvement recommendations*`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: enhancedPrompt
+            });
+
+  # Security monitoring
+  security-monitor:
+    runs-on: ubuntu-latest
+    needs: bot-authorization
+    if: always()
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Log bot activity
+        run: |
+          echo "🔒 Security Event Log"
+          echo "===================="
+          echo "Timestamp: $(date -u)"
+          echo "Event: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Bot Type: ${{ needs.bot-authorization.outputs.bot-type }}"
+          echo "Authorized: ${{ needs.bot-authorization.outputs.authorized }}"
+          echo "Action: ${{ needs.bot-authorization.outputs.action }}"
+          
+          # Store for security auditing
+          if [[ "${{ needs.bot-authorization.outputs.authorized }}" == "false" ]]; then
+            echo "⚠️ SECURITY ALERT: Unauthorized bot activity detected"
+            echo "This event should be reviewed by repository administrators"
+          fi

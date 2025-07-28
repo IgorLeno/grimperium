@@ -1,15 +1,91 @@
-# .github/workflows/auto-label.yml
-name: Auto Label
+name: 🏷️ Auto Label
 
 on:
   pull_request:
+    types: [opened, synchronize]
+  issues:
     types: [opened]
 
+concurrency:
+  group: label-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
-  label:
+  auto-label:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/labeler@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Apply PR labels based on files
+        if: github.event_name == 'pull_request'
+        uses: actions/labeler@v5
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          
+      - name: Apply size labels
+        if: github.event_name == 'pull_request'
+        uses: pascalgn/size-label-action@v0.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          sizes: >
+            {
+              "0": "XS",
+              "20": "S", 
+              "100": "M",
+              "500": "L",
+              "1000": "XL"
+            }
+            
+      - name: Label chemistry-related content
+        if: github.event_name == 'issues' || github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request?.title || context.payload.issue?.title || '';
+            const body = context.payload.pull_request?.body || context.payload.issue?.body || '';
+            const text = (title + ' ' + body).toLowerCase();
+            
+            const chemistryKeywords = [
+              'molecule', 'crest', 'mopac', 'openbabel', 'pubchem', 
+              'quantum', 'conformer', 'smiles', 'geometry', 'calculation'
+            ];
+            
+            const labels = [];
+            
+            // Chemistry-related content
+            if (chemistryKeywords.some(keyword => text.includes(keyword))) {
+              labels.push('chemistry');
+            }
+            
+            // Priority based on keywords
+            if (text.includes('critical') || text.includes('urgent') || text.includes('bug')) {
+              labels.push('high priority');
+            }
+            
+            // Enhancement detection
+            if (text.includes('feature') || text.includes('enhancement') || text.includes('improve')) {
+              labels.push('enhancement');
+            }
+            
+            // Documentation
+            if (text.includes('doc') || text.includes('readme') || text.includes('guide')) {
+              labels.push('documentation');
+            }
+            
+            // Apply labels
+            if (labels.length > 0) {
+              const issueNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+              await github.rest.issues.addLabels({
+                issue_number: issueNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: labels
+              });
+            }
