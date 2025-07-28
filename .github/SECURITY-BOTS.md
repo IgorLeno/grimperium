@@ -36,16 +36,46 @@
 
 4. **Branch Protection**: Configure branch protection rules no GitHub
 
-## 🚨 Ações Imediatas se Bots Estiverem Fazendo Commits Indevidos
+## 🚨 PROBLEMA: CodeRabbit Fazendo Commits
 
-1. **Desabilitar bot temporariamente**
-2. **Revisar últimos commits** para alterações não autorizadas
-3. **Ajustar configurações** conforme documentado
-4. **Reativar bot** apenas após confirmação de configuração correta
+### **Solução Imediata**
 
-## 📞 Suporte
+1. **Execute o script de diagnóstico**:
+   ```bash
+   ./scripts/fix-coderabbit-permissions.sh
+   ```
 
-Se os bots continuarem fazendo commits após essas configurações:
-1. Verificar configurações do repositório no GitHub
-2. Revisar integrações ativas no repositório
-3. Contatar suporte das ferramentas específicas
+2. **Acesse GitHub Settings**:
+   - Vá em `Settings` → `Integrations and services`
+   - Encontre `CodeRabbit` → `Configure`
+   - **REMOVA**: Write access to code, branches, pull requests
+   - **MANTENHA**: Read access apenas
+
+3. **Ative Branch Protection**:
+   - `Settings` → `Branches` → `Add rule`
+   - Branch: `main`
+   - ✅ `Require pull request reviews before merging`
+   - ✅ `Restrict pushes that create files`
+
+### **Verificação**
+
+```bash
+# Verificar últimos commits suspeitos
+git log --oneline -10 --pretty=format:"%h %an <%ae> %s" | grep -i coderabbit
+
+# Verificar configuração atual
+cat .coderabbit.yaml | grep -A5 -B5 "read_only\|auto_merge\|auto_commit"
+```
+
+### **Se o Problema Persistir**
+
+1. **Desinstalar CodeRabbit** completamente do repositório
+2. **Aguardar 24h** para propagação das alterações
+3. **Reinstalar** com permissões mínimas (somente leitura)
+4. **Testar** com um PR pequeno antes de uso completo
+
+## 📞 Contatos de Suporte
+
+- **CodeRabbit**: https://docs.coderabbit.ai/
+- **GitHub Support**: https://support.github.com/
+- **Configuração do Projeto**: Execute `./scripts/fix-coderabbit-permissions.sh`

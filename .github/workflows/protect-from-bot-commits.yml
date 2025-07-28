@@ -1,0 +1,66 @@
+name: Protect Against Bot Commits
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  check-bot-commits:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 10
+        
+    - name: Check for Unauthorized Bot Commits
+      run: |
+        echo "🔍 Verificando commits não autorizados de bots..."
+        
+        # Lista de bots que NÃO devem fazer commits
+        FORBIDDEN_BOTS="coderabbitai|coderabbit|claude-code"
+        
+        # Verificar últimos commits
+        git log --oneline -10 --pretty=format:"%h %an %s" > recent_commits.txt
+        
+        # Verificar se há commits de bots proibidos
+        if grep -iE "$FORBIDDEN_BOTS" recent_commits.txt; then
+          echo "🚨 ERRO: Commit não autorizado detectado de bot!"
+          echo "📋 Commits encontrados:"
+          grep -iE "$FORBIDDEN_BOTS" recent_commits.txt
+          echo ""
+          echo "❌ CodeRabbit e outros bots de revisão NÃO devem fazer commits"
+          echo "✅ Apenas Gemini Code Assist pode fazer commits de formatação"
+          echo ""
+          echo "🔧 Ações necessárias:"
+          echo "1. Reverter commits não autorizados"
+          echo "2. Verificar configurações do bot"
+          echo "3. Revisar permissões do repositório"
+          exit 1
+        else
+          echo "✅ Nenhum commit não autorizado detectado"
+        fi
+        
+    - name: Verify Author Information
+      if: github.event_name == 'push'
+      run: |
+        echo "📧 Verificando informações do autor do último commit..."
+        
+        LAST_COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an")
+        LAST_COMMIT_EMAIL=$(git log -1 --pretty=format:"%ae")
+        
+        echo "Autor: $LAST_COMMIT_AUTHOR"
+        echo "Email: $LAST_COMMIT_EMAIL"
+        
+        # Verificar se o commit é de um bot não autorizado
+        if echo "$LAST_COMMIT_EMAIL" | grep -iE "coderabbit|claude-code"; then
+          echo "🚨 ALERTA: Commit de bot não autorizado detectado!"
+          echo "📧 Email suspeito: $LAST_COMMIT_EMAIL"
+          
+          # Notificar no PR se existir
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "commit_warning=true" >> $GITHUB_OUTPUT
+          fi
+        fi

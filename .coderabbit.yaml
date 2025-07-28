@@ -1,75 +1,84 @@
+# CodeRabbit Configuration - STRICT READ-ONLY MODE
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
 language: "pt-BR"
 early_access: false
-tone_instructions: |
-  Você é um revisor especialista em Python, focado em qualidade de código, 
-  segurança e melhores práticas. Forneça APENAS feedback e sugestões de revisão.
-  NUNCA faça commits, alterações em código ou crie branches.
 
+# INSTRUÇÕES EXPLÍCITAS PARA MODO SOMENTE LEITURA
+tone_instructions: |
+  Você é um revisor de código especialista em Python configurado em MODO SOMENTE LEITURA.
+  
+  RESPONSABILIDADES:
+  ✅ PERMITIDO: Análise de código, comentários de revisão, feedback textual
+  ❌ PROIBIDO: Commits, push, criação de branches, alterações de código, pull requests
+  
+  Forneça APENAS análise e sugestões em português brasileiro.
+
+# CONFIGURAÇÕES DE REVISÃO RESTRITIVAS
 reviews:
-  profile: "chill"
+  profile: "assertive"
   request_changes_workflow: false
   high_level_summary: true
-  review_status: true
-  collapse_walkthrough: false
+  review_status: false
+  collapse_walkthrough: true
   
-  # Configurações restritivas para APENAS revisão
+  # Auto-review habilitado APENAS para comentários
   auto_review:
     enabled: true
     drafts: false
     base_branches: ["main", "develop"]
   
-  # Desabilitar todas as ações automáticas de código
-  auto_commit: false
+  # DESABILITAR TODAS AS AÇÕES DE MODIFICAÇÃO
+  auto_title_update: false
   auto_merge: false
-  auto_fix: false
-    
+  
+  # Instruções específicas por path
   path_instructions:
     - path: "grimperium/**/*.py"
       instructions: |
-        Revise código Python seguindo:
-        - PEP8 e convenções Python
-        - Validação Pydantic nos models
+        Análise focada em:
+        - Conformidade PEP8
+        - Padrões Pydantic
+        - Type hints
         - Docstrings Google-style
-        - Type hints obrigatórios
-        - Tratamento de erros adequado
-        - Padrão de Service do projeto (BaseService)
-        - Logs estruturados com self.logger
+        - Arquitetura de Services
+        APENAS COMENTÁRIOS - NÃO ALTERE CÓDIGO
         
     - path: "grimperium/tests/**/*.py"
       instructions: |
-        Analise testes focando em:
-        - Cobertura adequada de cenários
-        - Uso correto de fixtures pytest
-        - Assertions específicas e claras
-        - Mocks apropriados para serviços externos
-        - Testes de edge cases e tratamento de erros
-        
-    - path: "config.yaml"
-      instructions: |
-        Valide configurações:
-        - Estrutura YAML válida
-        - Paths e executáveis corretos
-        - Configurações de segurança adequadas
+        Revisar testes para:
+        - Cobertura adequada
+        - Mocks apropriados
+        - Assertions claras
+        APENAS ANÁLISE - NÃO MODIFIQUE ARQUIVOS
 
-# Configurações restritivas para modo read-only
-actions:
-  # Desabilitar TODAS as ações que modificam código
-  suggest_code_changes: false
-  create_pull_requests: false
-  commit_changes: false
-  merge_pull_requests: false
-  approve_pull_requests: false
+# DESABILITAR TODAS AS FUNCIONALIDADES DE ESCRITA
+knowledge_base:
+  learnings:
+    enabled: false
   
-# Configurações de chat limitadas
+sequence_diagrams:
+  enabled: false
+
+# CONFIGURAÇÕES DE CHAT LIMITADAS
 chat:
-  auto_reply: true
-  # Limitar apenas a comentários de revisão
-  allowed_commands: ["explain", "summary"]
+  auto_reply: false
   
-# Configurações de permissões
-permissions:
-  read_only: true
-  can_commit: false
-  can_push: false
-  can_create_branches: false
+# CONFIGURAÇÕES DE AÇÕES - TODAS DESABILITADAS
+actions:
+  review: true           # Permitir apenas comentários de revisão
+  chat: true            # Permitir apenas chat/perguntas
+  describe: false       # Desabilitar geração de descrições
+  improve: false        # Desabilitar melhorias automáticas
+  auto_incremental: false
+  auto_title_update: false
+
+# CONFIGURAÇÕES GLOBAIS RESTRITIVAS
+ignore:
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/*.yml"
+  - "**/*.yaml"
+  - "**/node_modules/**"
+  - "**/venv/**"
+  - "**/__pycache__/**"
