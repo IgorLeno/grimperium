@@ -19,9 +19,9 @@ class TestInteractiveBatchWorkflow:
     def temp_config(self, tmp_path):
         """Create a temporary configuration for testing."""
         lists_dir = tmp_path / "lists"
-        lists_dir.mkdir()
+        lists_dir.mkdir(exist_ok=True)
         repo_dir = tmp_path / "repository"
-        repo_dir.mkdir()
+        repo_dir.mkdir(exist_ok=True)
 
         return {
             "general_settings": {"lists_directory": str(lists_dir)},

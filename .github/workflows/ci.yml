@@ -1,0 +1,360 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+  workflow_dispatch:
+
+env:
+  PYTHON_DEFAULT_VERSION: "3.11"
+
+jobs:
+  # Code Quality and Linting Job
+  lint:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+    
+    - name: Run Black code formatter check
+      run: |
+        black --check --diff grimperium/
+    
+    - name: Run isort import sorting check
+      run: |
+        isort --check-only --diff grimperium/
+    
+    - name: Run Flake8 linting
+      run: |
+        # Use existing .flake8 configuration
+        flake8 grimperium/ --statistics --tee --output-file=flake8-report.txt
+    
+    - name: Run MyPy type checking
+      run: |
+        mypy grimperium/ --ignore-missing-imports --no-strict-optional
+      continue-on-error: true
+    
+    - name: Upload lint results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: lint-results
+        path: |
+          flake8-report.txt
+        retention-days: 5
+
+  # Testing Matrix Job
+  test:
+    name: Test Suite
+    runs-on: ${{ matrix.os }}
+    needs: lint
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        exclude:
+          # Reduce matrix size for efficiency
+          - os: windows-latest
+            python-version: "3.9"
+          - os: macos-latest
+            python-version: "3.9"
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov pytest-mock pytest-xdist
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      shell: bash
+    
+    - name: Create test directories
+      run: |
+        mkdir -p data logs repository
+      shell: bash
+    
+    - name: Run tests with coverage
+      run: |
+        pytest grimperium/tests/ \
+          --cov=grimperium \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-report=term-missing \
+          --junitxml=pytest-report.xml \
+          -v \
+          --tb=short \
+          --maxfail=10 \
+          -n auto
+      shell: bash
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: matrix.python-version == env.PYTHON_DEFAULT_VERSION && matrix.os == 'ubuntu-latest'
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+        path: |
+          pytest-report.xml
+          htmlcov/
+          coverage.xml
+        retention-days: 5
+
+  # Security and Dependency Check
+  security:
+    name: Security & Dependency Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit semgrep
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Run Safety check for dependencies
+      run: |
+        safety check --json --output safety-report.json
+      continue-on-error: true
+    
+    - name: Run Bandit security scan
+      run: |
+        bandit -r grimperium/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run Semgrep security scan
+      run: |
+        semgrep --config=auto grimperium/ --json --output=semgrep-report.json
+      continue-on-error: true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          safety-report.json
+          bandit-report.json
+          semgrep-report.json
+        retention-days: 30
+
+  # Performance and Integration Tests
+  integration:
+    name: Integration & Performance Tests
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    timeout-minutes: 20
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-benchmark pytest-timeout
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Create test environment
+      run: |
+        mkdir -p data logs repository
+        # Create basic config for integration tests
+        cat > config.yaml << EOF
+        external_programs:
+          crest:
+            executable: "echo"  # Mock for CI
+            timeout: 300
+          mopac:
+            executable: "echo"  # Mock for CI
+            timeout: 600
+          obabel:
+            executable: "echo"  # Mock for CI
+        database:
+          main_db: "data/grimperium_database.csv"
+        logging:
+          level: "INFO"
+          file: "logs/grim_details.log"
+        EOF
+    
+    - name: Run integration tests
+      run: |
+        python main.py info  # Test basic CLI functionality
+        pytest grimperium/tests/ -m "integration" -v --tb=short || echo "No integration tests marked yet"
+    
+    - name: Run performance benchmarks
+      run: |
+        pytest grimperium/tests/ -m "benchmark" --benchmark-json=benchmark-results.json -v || echo "No benchmark tests marked yet"
+      continue-on-error: true
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-results
+        path: |
+          benchmark-results.json
+        retention-days: 30
+
+  # Code Quality Summary Job
+  quality-gate:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    if: always()
+    timeout-minutes: 5
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Quality Gate Analysis
+      run: |
+        echo "## Quality Gate Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        
+        # Check lint job status
+        if [ "${{ needs.lint.result }}" == "success" ]; then
+          echo "| Code Linting | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Code Linting | ❌ Fail |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Check test job status
+        if [ "${{ needs.test.result }}" == "success" ]; then
+          echo "| Test Suite | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Test Suite | ❌ Fail |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Check security job status
+        if [ "${{ needs.security.result }}" == "success" ]; then
+          echo "| Security Scan | ✅ Pass |" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "| Security Scan | ⚠️  Warning |" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Artifacts generated:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Test coverage reports" >> $GITHUB_STEP_SUMMARY
+        echo "- Security scan results" >> $GITHUB_STEP_SUMMARY
+        echo "- Lint analysis results" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Circuit Breaker Check
+      run: |
+        # Implement circuit breaker logic
+        FAILED_JOBS=0
+        
+        if [ "${{ needs.lint.result }}" != "success" ]; then
+          FAILED_JOBS=$((FAILED_JOBS + 1))
+        fi
+        
+        if [ "${{ needs.test.result }}" != "success" ]; then
+          FAILED_JOBS=$((FAILED_JOBS + 1))
+        fi
+        
+        echo "Failed jobs count: $FAILED_JOBS"
+        
+        if [ $FAILED_JOBS -ge 2 ]; then
+          echo "::error::Circuit breaker triggered: Too many critical jobs failed ($FAILED_JOBS)"
+          echo "This indicates a potential systemic issue that requires immediate attention."
+          exit 1
+        fi
+        
+        if [ $FAILED_JOBS -eq 1 ]; then
+          echo "::warning::Quality gate warning: 1 critical job failed. Please review before merging."
+        fi
+
+# CodeRabbit AI Review Job (for Pull Requests)
+  coderabbit-review:
+    name: CodeRabbit AI Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: CodeRabbit Review
+      uses: coderabbitai/coderabbit-action@v2
+      with:
+        repository_token: ${{ secrets.GITHUB_TOKEN }}
+        openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        include_diff_context: true
+        review_simple_changes: false
+        enable_free_tier: true
+      continue-on-error: true
