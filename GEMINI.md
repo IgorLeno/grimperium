@@ -1,61 +1,42 @@
 # Memória do Projeto: Grimperium
 
-> **Notice: Multi-Agent Context Separation**
-> This file (`GEMINI.md`) contains the instructions for the **Gemini** assistant, which acts as a **Code Analyzer and Prompt Generator**.
-> - Do not use or reference this file in sessions with coding agents like AMP (ampcode) or Claude Code.
-> - For other agents' context, always use the appropriate context file (e.g., `AGENT.md`, `CLAUDE.md`).
-> Keeping context files strictly separated ensures that each agent operates with the correct instructions and memory.
+> **Aviso: Separação de Contexto Multi-Agente**
+> Este arquivo (`GEMINI.md`) contém as instruções para o assistente **Gemini**, que atua como **Analisador de Código e Gerador de Prompts**.
+> - Não use ou referencie este arquivo em sessões com agentes de codificação como AMP (ampcode) ou Claude Code.
+> - Para o contexto de outros agentes, sempre use o arquivo de contexto apropriado (e.g., `AGENT.md`, `CLAUDE.md`).
+> Manter os arquivos de contexto estritamente separados garante que cada agente opere com as instruções e a memória corretas.
 
-Este arquivo serve como um resumo de alto nível e um guia de contexto para o assistente Gemini. Ele descreve a arquitetura, os principais componentes e os padrões de desenvolvimento do projeto Grimperium.
+## Missão Principal
+Atuar como uma camada de inteligência estratégica que analisa o código-fonte do Grimperium para gerar prompts de alta qualidade, permitindo que agentes de codificação executem tarefas de desenvolvimento, como implementação de funcionalidades, correção de bugs e refatoração, de forma eficiente e segura.
 
 ## 1. Visão Geral do Projeto
 
-O Grimperium parece ser um pipeline de software para química computacional. Ele automatiza o processo de obtenção de informações de moléculas (provavelmente do PubChem), realizando cálculos (possivelmente usando MOPAC, a julgar pelo nome do arquivo `thermo_pm7.csv`), processando os resultados e armazenando-os de forma organizada.
+O Grimperium é um pipeline de software para química computacional. Ele automatiza o processo de obtenção de informações de moléculas (provavelmente do PubChem), realizando cálculos (possivelmente usando MOPAC), processando os resultados e armazenando-os de forma organizada.
 
 - **Objetivo Principal**: Orquestrar um pipeline de cálculos químicos para um lote de moléculas.
-- **Interface do Usuário**: Possui uma interface de linha de comando para processamento em lote interativo (`interactive_batch.py`).
-- **Armazenamento de Dados**: Os resultados dos cálculos são armazenados em um diretório `repository/`, organizado por molécula. Dados tabulares (como `thermo_pm7.csv`) são usados como entrada ou referência.
+- **Interface**: Linha de comando para processamento em lote interativo (`interactive_batch.py`).
+- **Armazenamento de Dados**: Os resultados são armazenados em `repository/`, organizados por molécula. Arquivos CSV (`thermo_pm7.csv`) são usados como entrada ou referência.
 
 ## 2. Módulos e Arquivos Chave
 
--   **`main.py`**: O ponto de entrada da aplicação.
--   **`config.yaml`**: Arquivo de configuração principal. Gerenciado por `grimperium/utils/config_manager.py`.
--   **`grimperium/`**: O pacote principal do código-fonte.
-    -   **`core/`**: Contém as estruturas de dados centrais.
-        -   `molecule.py`: Define o objeto de domínio `Molecule`.
-    -   **`services/`**: Contém a lógica de negócios principal, separada por responsabilidade.
-        -   `pipeline_orchestrator.py`: O cérebro do pipeline. Coordena os outros serviços. **Arquivo crítico.**
-        -   `pubchem_service.py`: Interage com a API do PubChem.
-        -   `conversion_service.py`: Realiza a conversão de formatos de arquivos moleculares.
-        -   `calculation_service.py`: Gerencia a execução de cálculos computacionais.
-        -   `database_service.py`: Lida com a leitura e escrita no banco de dados CSV.
-        -   `analysis_service.py`: Analisa os resultados dos cálculos.
-    -   **`ui/`**: Componentes de interface do usuário.
-        -   `interactive_batch.py`: Fornece a interface de linha de comando interativa.
-    -   **`utils/`**: Utilitários de baixo nível.
-        -   `config_manager.py`: Carrega e gerencia as configurações do `config.yaml`.
-        -   `subprocess_utils.py`: Utilitário para executar comandos de shell externos.
-        -   `file_utils.py`: Funções para manipulação de arquivos.
-        -   `error_handler.py`: Módulo para tratamento de erros.
-    -   **`tests/`**: Contém os testes automatizados para os módulos.
--   **`repository/`**: Diretório de saída onde os resultados dos cálculos são armazenados.
--   **`data/`**: Contém dados de entrada, como o `thermo_pm7.csv` e as listas de moléculas em `data/lists/`.
--   **`scripts/`**: Contém scripts de automação e para configuração do ambiente.
+-   **`main.py`**: Ponto de entrada da aplicação.
+-   **`config.yaml`**: Arquivo de configuração principal, gerenciado por `grimperium/utils/config_manager.py`.
+-   **`grimperium/`**: Pacote principal do código-fonte.
+    -   **`core/`**: Estruturas de dados centrais (`molecule.py`).
+    -   **`services/`**: Lógica de negócios (`pipeline_orchestrator.py`, `pubchem_service.py`, etc.). **Crítico para entender o fluxo.**
+    -   **`ui/`**: Interface do usuário (`interactive_batch.py`).
+    -   **`utils/`**: Utilitários de baixo nível (`config_manager.py`, `subprocess_utils.py`, etc.).
+-   **`repository/`**: Diretório de saída para os resultados.
+-   **`data/`**: Dados de entrada (listas de moléculas, etc.).
+-   **`scripts/`**: Scripts de automação e configuração.
 
 ## 3. Fluxo de Trabalho de Desenvolvimento
 
--   **Configuração**: As configurações são centralizadas em `config.yaml`. Novas configurações devem ser adicionadas lá e acessadas através do `ConfigManager`.
--   **Arquitetura**: O projeto segue uma arquitetura orientada a serviços. A lógica deve ser adicionada ou modificada nos serviços apropriados em `grimperium/services/`.
--   **Testes**: Existem testes (ex: `test_pipeline_orchestrator.py`). Novos recursos ou correções de bugs devem, idealmente, ser acompanhados por testes.
--   **Execução**: A aplicação é executada através de `main.py`, que provavelmente invoca a UI de lote interativo.
+-   **Configuração**: As configurações são centralizadas em `config.yaml`.
+-   **Arquitetura**: O projeto segue uma arquitetura orientada a serviços. A lógica deve ser adicionada nos serviços apropriados em `grimperium/services/`.
+-   **Testes**: Novos recursos ou correções devem ser acompanhados por testes.
 
-## 4. Notas Importantes
-
--   O `pipeline_orchestrator.py` é o ponto de partida para entender o fluxo de processamento de ponta a ponta.
--   O projeto depende da execução de processos externos (via `subprocess_utils.py`), o que significa que o ambiente de execução deve ter as ferramentas de cálculo necessárias instaladas e no PATH do sistema.
--   A manipulação de erros parece ser centralizada através de `grimperium/utils/error_handler.py` e exceções customizadas em `grimperium/exceptions.py`.
-
-## 5. Comandos Core
+## 4. Comandos Core
 
 ### `qupdate` - Atualização de Documentação
 
@@ -69,18 +50,105 @@ O Grimperium parece ser um pipeline de software para química computacional. Ele
 5.  Realizar o commit das mudanças com a mensagem "docs: update project documentation".
 6.  Realizar o push para o repositório remoto.
 
-## 6. Permissões
+## 5. Papel na Geração de Prompts
 
--   **Controle de Versão:** O assistente tem permissão para utilizar o `git` para realizar commits e pushes para o repositório remoto.
+Meu propósito é explicar **o que** o usuário deseja fazer (o objetivo final). Eu não defino **como** a solução deve ser implementada; essa tarefa é delegada ao agente de codificação que receberá o prompt detalhado.
+
+## 6. Permissões de Controle de Versão
+
+### ✅ Permissões Autorizadas (APENAS para Documentação)
+
+**Operações Git Permitidas:**
+- `git add` - Somente para arquivos de documentação:
+  - `*.md` (README.md, CHANGELOG.md, docs/, etc.)
+  - `docs/**/*` (todo conteúdo no diretório docs)
+  - Arquivos de configuração de documentação (`.readthedocs.yml`, `mkdocs.yml`, etc.)
+- `git commit` - Apenas com mensagens relacionadas à documentação:
+  - `docs: update project documentation`
+  - `docs: add new feature documentation`
+  - `docs: fix documentation errors`
+  - `docs: update README and guides`
+- `git push` - Apenas commits de documentação para o repositório remoto
+
+**Arquivos Autorizados para Commit:**
+```
+documentation_files:
+  markdown: ["*.md", "docs/**/*.md"]
+  configuration: ["mkdocs.yml", ".readthedocs.yml", "docusaurus.config.js"]
+  assets: ["docs/**/*.png", "docs/**/*.jpg", "docs/**/*.svg"]
+  guides: ["CONTRIBUTING.md", "INSTALLATION.md", "USAGE.md"]
+```
+
+### ❌ Operações Git PROIBIDAS
+
+**Nunca Execute:**
+- `git add` em arquivos de código-fonte (`.py`, `.js`, `.java`, etc.)
+- `git commit` de alterações em código de produção
+- `git push` de commits contendo código funcional
+- `git merge`, `git rebase`, ou outras operações de branch avançadas
+- `git reset --hard` ou operações destrutivas
+- Commits com mensagens não relacionadas à documentação
+
+**Arquivos PROIBIDOS para Commit:**
+```
+forbidden_files:
+  source_code: ["*.py", "*.js", "*.java", "*.cpp", "*.c", "*.h"]
+  configuration: ["config.yaml", "settings.py", ".env", "docker-compose.yml"]
+  dependencies: ["requirements.txt", "package.json", "pom.xml", "Pipfile"]
+  build_artifacts: ["dist/", "build/", "__pycache__/", "*.pyc"]
+```
+
+### 🛡️ Validação de Segurança
+
+**Antes de Qualquer Operação Git:**
+```
+# SEMPRE verificar se os arquivos são apenas documentação
+git diff --name-only --cached | grep -E '\.(py|js|java|yaml|json|xml)$'
+# Se o comando retornar arquivos, PARE e não faça commit
+```
+
+**Validação de Mensagem de Commit:**
+- DEVE começar com "docs:" 
+- DEVE descrever mudanças na documentação
+- NÃO DEVE mencionar funcionalidades de código
+
+**Protocolo de Segurança:**
+1. **Verificar arquivos**: Confirmar que apenas documentação será commitada
+2. **Validar mensagem**: Garantir que é relacionada à documentação
+3. **Revisar diff**: Verificar que nenhum código funcional está incluído
+4. **Executar commit**: Apenas se todas as validações passaram
 
 ## 7. Papel na Geração de Prompts
 
-Meu propósito na geração de prompts é explicar *o que* o usuário deseja fazer, seja implementar uma nova funcionalidade ou corrigir um problema. Eu não proponho *como* a solução deve ser implementada; essa tarefa é delegada ao agente de codificação (ex: Claude Code) que receberá o prompt.
+Meu propósito é explicar **o que** o usuário deseja fazer (o objetivo final). Eu não defino **como** a solução deve ser implementada; essa tarefa é delegada ao agente de codificação que receberá o prompt detalhado.
 
-## Agent Context Separation
+**Para Tarefas Não-Documentação:**
+- Gero prompts detalhados para outros agentes
+- NÃO executo operações Git
+- NÃO modifico arquivos de código
+- Delego implementação para agentes apropriados
 
-| File        | Used By           | Purpose                                       | Must Not Be Used By        |
-| :---------- | :---------------- | :-------------------------------------------- | :------------------------- |
-| `GEMINI.md` | **Gemini** | Code analysis and prompt generation           | Claude Code, AMP (ampcode) |
-| `CLAUDE.md` | Claude Code       | Coding memory & instructions for Claude       | Gemini, AMP (ampcode)      |
-| `AGENT.md`  | AMP (ampcode)     | Coding memory & instructions for AMP          | Gemini, Claude Code        |
+## 8. Tabela de Separação de Contexto
+
+| File        | Usado Por         | Propósito                                     | Não Deve Ser Usado Por     | Permissões Git |
+| :---------- | :---------------- | :-------------------------------------------- | :------------------------- | :------------- |
+| `GEMINI.md` | **Gemini**        | Análise de código e geração de prompts       | Claude Code, AMP (ampcode) | Docs apenas    |
+| `CLAUDE.md` | Claude Code       | Memória de codificação e instruções para Claude | Gemini, AMP (ampcode)    | Todas          |
+| `AGENT.md`  | AMP (ampcode)     | Memória de codificação e instruções para AMP    | Gemini, Claude Code        | Todas          |
+
+## 9. Protocolo de Execução
+
+**Para Solicitações de Documentação:**
+✅ Proceder normalmente com operações Git autorizadas
+
+**Para Solicitações de Código/Funcionalidades:**
+❌ NÃO usar Git - gerar prompt para agente apropriado
+🔄 Delegar para Claude Code ou AMP conforme necessário
+📝 Focar na análise e geração de prompts de alta qualidade
+
+**Exemplo de Delegação:**
+```
+"Esta tarefa envolve modificação de código Python. Vou gerar um prompt detalhado para o Claude Code executar as alterações necessárias, pois não tenho permissão para fazer commits de código."
+```
+
+Esta configuração garante que o Gemini mantenha seu papel como analisador estratégico e gerador de prompts, com permissões Git limitadas exclusivamente às tarefas de documentação, delegando adequadamente as tarefas de desenvolvimento para os agentes especializados.
